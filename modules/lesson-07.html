@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 7 — Optimization Intuition</title>
+<link rel="stylesheet" href="../assets/style.css">
+<meta name="description" content="Gradient descent from intuition first: how optimization walks a model's parameters toward a smaller loss.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="AI → Machine Learning">
+<meta property="og:title" content="Lesson 7 — Optimization Intuition">
+<meta property="og:description" content="Gradient descent from intuition first: how optimization walks a model's parameters toward a smaller loss.">
+<meta property="og:url" content="https://addahadi.github.io/ai-to-ml/modules/lesson-07.html">
+<meta name="twitter:card" content="summary">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand-mark" href="../index.html">AI<span>&#8594;</span>ML</a>
+    <nav>
+      <a href="../index.html">Roadmap</a>
+      <a href="#search">Why not search?</a>
+      <a href="#slope">The slope</a>
+      <a href="#update">The update rule</a>
+      <a href="#lr">Learning rate</a>
+      <a href="#stuck">When it fails</a>
+      <a href="#exercises">Exercises</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="crumb"><a href="../index.html">Roadmap</a> &nbsp;&#8250;&nbsp; Part II &middot; The Machine Learning Mindset &nbsp;&#8250;&nbsp; Module 1 &middot; Learning From Data</div>
+
+  <section class="hero">
+    <span class="eyebrow">Lesson 07 &middot; Core concepts</span>
+    <h1>Optimization Intuition: How a Model Walks Downhill</h1>
+    <p class="lead">Lesson 5 gave you a landscape whose height is the error and whose coordinates are the parameters. Lesson 6 made that height exact. Two slots in the training loop are still empty: <em>which way is down</em>, and <em>how far do I step</em>. This lesson fills them. By the end you will have run gradient descent by hand, on paper, and watched it converge &mdash; and watched it explode.</p>
+    <div class="meta-row">
+      <span><b>Reading:</b> ~40 min</span>
+      <span><b>Prerequisites:</b> Lessons 5 &amp; 6</span>
+      <span><b>Code:</b> pseudocode + a descent you run by hand</span>
+    </div>
+  </section>
+
+  <div class="callout why">
+    <div class="callout-label">Why an entire lesson on "walking downhill"</div>
+    <p>Every algorithm in Part III and Part IV needs some way to find good parameters, and one method does the job for nearly all of them. Gradient descent is not one algorithm's implementation detail &mdash; it is <strong>the</strong> mechanism by which models learn, from the linear regression you'll build in Lesson 10 to the trillion-parameter systems this course deliberately stops before. Learn it once here, in its simplest possible setting, and every later "how does this model train?" question has the same answer.</p>
+    <p>There is a second reason, and it's the practical one. When training goes wrong &mdash; the loss becomes <code>NaN</code>, the loss plateaus at a terrible value, the loss bounces around and never settles &mdash; the cause is almost always in this lesson. Engineers who skipped the intuition here spend their careers changing random settings and hoping. Engineers who have it read the loss curve and know what to change.</p>
+  </div>
+
+  <div class="callout intuition">
+    <div class="callout-label">The situation, honestly described: descending in fog</div>
+    <p>You are standing somewhere on a hillside. Thick fog &mdash; you can see nothing beyond your own boots. You want to reach the lowest point in the valley. What can you actually use?</p>
+    <p>You cannot see the valley floor, so you cannot walk straight to it. You cannot see the whole terrain, so you cannot plan a route. What you <em>can</em> do is feel the ground directly beneath your feet and notice <strong>which direction tilts downward</strong>. So you take a step that way. Then, from your new position, you feel again, and step again.</p>
+    <p>That is the entire algorithm. It is almost insultingly simple, and the reason it matters is that the fog is not a metaphor for ignorance we could remove with better tools &mdash; it is a permanent, structural fact. In a model with a thousand parameters, "seeing the whole landscape" would mean evaluating the loss at an impossible number of points. The <strong>local slope is the only information that is ever cheap enough to obtain</strong>, so every practical training method is built out of it.</p>
+  </div>
+
+  <h2 id="learning-goals">What this lesson delivers</h2>
+  <ul class="checklist">
+    <li>Why brute-force search and exact algebra both fail, and what that leaves us with.</li>
+    <li>What a <em>derivative</em> is, operationally &mdash; a number you can measure by nudging, no calculus required.</li>
+    <li>What a <em>gradient</em> is once there is more than one parameter, and why we step against it.</li>
+    <li>The update rule, run by hand over six steps on real numbers &mdash; including why the steps shrink on their own.</li>
+    <li>The <em>learning rate</em>: a table where the same problem converges, oscillates forever, or explodes depending on one number.</li>
+    <li>The four ways descent gets stuck, and which of them you can actually do something about.</li>
+    <li>Batch vs stochastic vs mini-batch, and how you decide when to stop.</li>
+  </ul>
+
+  <!-- =================================================================== -->
+  <h2 id="search">1 &middot; Why we can't just find the answer directly</h2>
+
+  <p>Before accepting a method that gropes around in fog, an engineer should ask the obvious question: why not just compute the best parameters? There are two straightforward strategies, and it is worth seeing precisely how each one dies.</p>
+
+  <h3>Strategy A &mdash; try every combination</h3>
+
+  <p>The parameters are numbers. Pick a range, chop it into steps, try every combination, keep the one with the lowest cost. For a single parameter this is completely reasonable: 100 candidate values, 100 evaluations of <span class="var">J</span>, done in a millisecond. The trouble is what happens when you add a second parameter, and a third.</p>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Parameters</th><th>Grid points (100 values each)</th><th>Time at 1 billion evaluations/second</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>100</td><td>instant</td></tr>
+        <tr><td>2</td><td>10,000</td><td>instant</td></tr>
+        <tr><td>3</td><td>1,000,000</td><td>~0.001 s</td></tr>
+        <tr><td>5</td><td>10,000,000,000</td><td>~10 s</td></tr>
+        <tr><td>10</td><td>10<sup>20</sup></td><td>~3,000 years</td></tr>
+        <tr><td>50</td><td>10<sup>100</sup></td><td>longer than the universe has existed</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Each new parameter multiplies the work by 100. This is the <strong>curse of dimensionality</strong>, and you will meet it again in Lesson 15 and Lesson 26. Notice how modest the failure point is: a plain linear model on 50 features &mdash; a small, ordinary, unglamorous model &mdash; has 51 parameters and is already permanently out of reach. Brute force is not slow. It is impossible.</p>
+
+  <div class="callout limit">
+    <div class="callout-label">And the grid is coarse even when it fits</div>
+    <p>Worse: 100 values per parameter is a very crude net. The true optimum will sit between grid points, so even after paying the full combinatorial price you get an approximation. Gradient descent has no such ceiling &mdash; it can walk to any precision you like, because it isn't restricted to a pre-chosen set of candidates.</p>
+  </div>
+
+  <h3>Strategy B &mdash; solve it with algebra</h3>
+
+  <p>The cost <span class="var">J(&theta;)</span> is just a function. At the bottom of a smooth valley the slope is zero, so set the derivative to zero and solve for <span class="var">&theta;</span>. This is honest, classical mathematics, and for <em>one specific case</em> it works beautifully: linear regression with squared error has a closed-form solution &mdash; the <strong>normal equation</strong> &mdash; which we will meet properly in Lesson 10.</p>
+
+  <div class="frame">
+    <div class="frame-row"><div class="n">1</div><div class="c"><b>It usually has no solution you can write down</b><span> &mdash; "set the derivative to zero" gives you an equation; it does not promise that equation can be rearranged into a formula. For logistic regression (Lesson 14) the resulting equations have <em>no</em> closed-form solution. None exists. This is the normal situation; linear regression is the lucky exception.</span></div></div>
+    <div class="frame-row"><div class="n">2</div><div class="c"><b>Even when it exists, it can cost too much</b><span> &mdash; the normal equation requires inverting a matrix, which costs roughly the cube of the number of features. Ten times more features means a thousand times more work, and it needs the entire dataset in memory at once. Past a few thousand features, the exact method loses to the approximate one.</span></div></div>
+    <div class="frame-row"><div class="n">3</div><div class="c"><b>It doesn't generalize to anything else</b><span> &mdash; the normal equation is a result about one model with one loss. Change the loss to MAE, add a regularization term, change the model, and the derivation is scrap. Gradient descent is indifferent: any smooth loss, any differentiable model, same four lines of code.</span></div></div>
+  </div>
+
+  <div class="callout why">
+    <div class="callout-label">The trade we are making, stated plainly</div>
+    <p>We are giving up an exact answer computed in one shot, and accepting an approximate answer computed by repeated small improvements. In exchange we get a method that is <strong>general</strong> (works for almost any model and loss), <strong>scalable</strong> (never needs the whole dataset at once), and <strong>simple</strong> (a handful of lines). That trade is the reason machine learning at scale is possible at all. It is also why "training" is a <em>process you watch</em> rather than a computation you wait for &mdash; the loss curve on your screen is this walk, plotted.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="slope">2 &middot; The slope: a number you can measure by nudging</h2>
+
+  <p>You do not need calculus to use a derivative. You need to know what it <em>is</em>, and there is a definition that requires nothing but arithmetic and honesty.</p>
+
+  <div class="callout def">
+    <div class="callout-label">Derivative (operational definition)</div>
+    <div class="eq">slope at <span class="var">&theta;</span> &nbsp;&#8776;&nbsp; [ <span class="var">J(&theta; + h)</span> &minus; <span class="var">J(&theta;)</span> ] / <span class="var">h</span> &nbsp;&nbsp; for a very small <span class="var">h</span></div>
+    <p>Nudge the parameter by a tiny amount <span class="var">h</span>. See how much the cost changed. Divide by the size of the nudge. That ratio is the slope: <strong>how much the cost changes per unit of parameter change</strong>. Calculus gives you exact formulas for this ratio without doing the nudge &mdash; that's all calculus adds. The meaning is entirely contained in the nudge.</p>
+  </div>
+
+  <p>Two properties carry all the weight, and both are about the <strong>sign</strong> rather than the size:</p>
+
+  <div class="frame">
+    <div class="frame-row"><div class="n">1</div><div class="c"><b>A negative slope means "increasing &theta; decreases the cost"</b><span> &mdash; the ground tilts down to your right, so you should move right. In other words: <em>increase</em> the parameter.</span></div></div>
+    <div class="frame-row"><div class="n">2</div><div class="c"><b>A positive slope means "increasing &theta; increases the cost"</b><span> &mdash; uphill to the right, so move left. <em>Decrease</em> the parameter.</span></div></div>
+    <div class="frame-row"><div class="n">3</div><div class="c"><b>A zero slope means flat ground</b><span> &mdash; no direction is downhill. Either you have arrived at the bottom, or you are stuck somewhere flat that isn't the bottom. Section 6 covers which.</span></div></div>
+  </div>
+
+  <p>Both cases are captured by one rule: <strong>move in the direction opposite to the sign of the slope.</strong> Subtracting the slope does exactly that, automatically &mdash; subtracting a negative number increases the parameter, subtracting a positive one decreases it. No <code>if</code> statement is required, and that is why the update rule in Section 4 is a single line.</p>
+
+  <div class="callout practice">
+    <div class="callout-label">Worked example: measuring a slope with nothing but subtraction</div>
+    <p>Here is the dataset for this lesson &mdash; three houses, prices in thousands of euros: <strong>180, 200, 220</strong>. Use the simplest model there is, the constant model from Lesson 6: predict the same number <span class="var">c</span> for every house, with MSE as the loss.</p>
+    <div class="eq">J(<span class="var">c</span>) &nbsp;=&nbsp; &#8531; [ (180 &minus; <span class="var">c</span>)&sup2; + (200 &minus; <span class="var">c</span>)&sup2; + (220 &minus; <span class="var">c</span>)&sup2; ]</div>
+    <p>Stand at <span class="var">c</span> = 100 and evaluate. Residuals are 80, 100, 120; squares are 6,400, 10,000, 14,400; the mean is <strong>J(100) = 10,266.67</strong>.</p>
+    <p>Now nudge to <span class="var">c</span> = 101. Residuals become 79, 99, 119; squares 6,241, 9,801, 14,161; the mean is <strong>J(101) = 10,067.67</strong>.</p>
+    <div class="eq">slope &#8776; (10,067.67 &minus; 10,266.67) / 1 &nbsp;=&nbsp; <b>&minus;199</b></div>
+    <p>Negative, so increasing <span class="var">c</span> reduces the cost &mdash; move right. The exact derivative here is &minus;200; our one-unit nudge got within half a percent using two evaluations and one subtraction. <strong>You just computed a gradient without calculus.</strong> Everything that follows is this measurement, repeated.</p>
+  </div>
+
+  <div class="callout math">
+    <div class="callout-label">The formula, for the curious &mdash; and why we won't lean on it yet</div>
+    <p>For this constant model the exact slope is <span class="var">dJ/dc</span> = 2(<span class="var">c</span> &minus; 200), where 200 happens to be the mean of the three prices. Check it at <span class="var">c</span> = 100: 2(100 &minus; 200) = &minus;200. &#10003; It also tells you something for free &mdash; the slope is zero exactly when <span class="var">c</span> = 200, so the mean is the bottom of this valley, which is the Lesson 6 theorem showing up again from a different direction.</p>
+    <p>We will use this exact formula for the rest of the lesson because it keeps the arithmetic clean. Do not lose the point, though: the formula is a <em>shortcut</em> for the nudge, not a different concept. Real libraries compute exact derivatives symbolically because it's faster and more accurate &mdash; but if they didn't, nudging would still work.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="gradient">3 &middot; The gradient: slope in every direction at once</h2>
+
+  <p>One parameter gives a curve and a single slope. Real models have many parameters, and then "which way is downhill" is a genuine question, because you can move in many directions.</p>
+
+  <div class="callout def">
+    <div class="callout-label">Gradient</div>
+    <div class="eq">&nabla;J &nbsp;=&nbsp; ( &part;J/&part;<span class="var">&theta;&#8321;</span>, &nbsp; &part;J/&part;<span class="var">&theta;&#8322;</span>, &nbsp; &hellip;, &nbsp; &part;J/&part;<span class="var">&theta;&#8342;</span> )</div>
+    <p>The gradient is the <strong>list of slopes, one per parameter</strong>. Each entry (a <em>partial derivative</em>) answers a self-contained question: "if I nudge <em>this</em> parameter and hold all the others still, how does the cost change?" Collect those answers into a vector and you have the gradient &mdash; one number for each dial you can turn.</p>
+  </div>
+
+  <div class="callout intuition">
+    <div class="callout-label">Two facts about the gradient that are worth memorizing</div>
+    <p><strong>1. The gradient points in the direction of steepest <em>increase</em>.</strong> Not decrease &mdash; increase. This trips people up constantly. Out of every direction you could step, the gradient names the one that raises the cost fastest. Which is exactly what we want, because the fastest way <em>down</em> is then the exact opposite: <strong>&minus;&nabla;J</strong>. That minus sign is the whole of gradient <em>descent</em>.</p>
+    <p><strong>2. The gradient is purely local.</strong> It describes the ground under your boots and says nothing whatever about the terrain ten metres away. It cannot see the valley floor, cannot tell you how far away it is, and cannot warn you about a cliff. Every limitation in Section 6 is a consequence of this single fact &mdash; the fog is built into the method, not into our implementation of it.</p>
+  </div>
+
+  <p>For the line model from Lesson 5 (<span class="var">&#375; = w&middot;x + b</span>) with MSE, the two partial derivatives work out to:</p>
+
+  <div class="eq">&part;J/&part;<span class="var">w</span> = &minus;(2/n) &middot; &Sigma; <span class="var">x&#7522;</span>(<span class="var">y&#7522;</span> &minus; <span class="var">&#375;&#7522;</span>) &nbsp;&nbsp;&nbsp;&nbsp; &part;J/&part;<span class="var">b</span> = &minus;(2/n) &middot; &Sigma; (<span class="var">y&#7522;</span> &minus; <span class="var">&#375;&#7522;</span>)</div>
+
+  <p>Take them on trust for now &mdash; Lesson 11 derives both from scratch and implements them in NumPy. But read what they <em>say</em>, because it's the sort of sanity check worth developing. Both are built from the residuals <span class="var">y &minus; &#375;</span>: if every prediction is perfect, both sums are zero, the gradient vanishes, and training stops. That is precisely the behaviour you'd demand. And notice that <span class="var">&part;J/&part;w</span> weights each residual by that house's <span class="var">x</span> &mdash; a big house missed badly pulls the <em>slope</em> harder than a small house missed equally badly, which is geometrically exactly right.</p>
+
+  <!-- =================================================================== -->
+  <h2 id="update">4 &middot; The update rule &mdash; and a descent you can run by hand</h2>
+
+  <p>We now have a direction. One thing is missing: the gradient tells you which way to go, but says nothing about <em>how far</em>. Nothing in it is measured in "steps". So we supply that ourselves, as a number we choose.</p>
+
+  <div class="callout def">
+    <div class="callout-label">The gradient descent update rule</div>
+    <div class="eq"><span class="var">&theta;</span> &nbsp;&larr;&nbsp; <span class="var">&theta;</span> &nbsp;&minus;&nbsp; <span class="var">&alpha;</span> &middot; &nabla;J(<span class="var">&theta;</span>)</div>
+    <p>Read it left to right: the new parameters are the old parameters, minus a small multiple of the gradient. The <strong>minus</strong> turns steepest ascent into steepest descent. The multiplier <span class="var">&alpha;</span> (alpha) is the <strong>learning rate</strong> &mdash; a positive number you choose, typically between 0.0001 and 0.5, controlling how big a step you take in that direction.</p>
+    <p>Repeat until the walk stops making progress. That's it. That is the algorithm that trains almost everything.</p>
+  </div>
+
+  <div class="callout practice">
+    <div class="callout-label">Worked example: six steps of gradient descent, by hand</div>
+    <p>Same three houses (180, 200, 220), same constant model, exact gradient 2(<span class="var">c</span> &minus; 200). Start deliberately badly at <span class="var">c</span> = 100 and set <span class="var">&alpha;</span> = 0.25. Each row is one application of the rule:</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Step</th><th><span class="var">c</span></th><th>Cost J</th><th>Gradient 2(c&minus;200)</th><th>Step taken (&minus;&alpha;&middot;grad)</th><th>New <span class="var">c</span></th></tr></thead>
+        <tbody>
+          <tr><td>0</td><td>100</td><td>10,266.7</td><td>&minus;200</td><td>+50</td><td>150</td></tr>
+          <tr><td>1</td><td>150</td><td>2,766.7</td><td>&minus;100</td><td>+25</td><td>175</td></tr>
+          <tr><td>2</td><td>175</td><td>891.7</td><td>&minus;50</td><td>+12.5</td><td>187.5</td></tr>
+          <tr><td>3</td><td>187.5</td><td>422.9</td><td>&minus;25</td><td>+6.25</td><td>193.75</td></tr>
+          <tr><td>4</td><td>193.75</td><td>305.8</td><td>&minus;12.5</td><td>+3.125</td><td>196.875</td></tr>
+          <tr><td>5</td><td>196.875</td><td>276.4</td><td>&minus;6.25</td><td>+1.5625</td><td>198.4375</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Six lines of arithmetic took a terrible guess (100) to within 1.6 of the optimum (200), and the cost fell from 10,266 to 276. Do at least two of these rows yourself with a pen &mdash; the mechanism becomes obvious in a way that reading cannot deliver.</p>
+  </div>
+
+  <p>Three things in that table deserve to be pulled out, because each is a general property rather than an accident of these numbers.</p>
+
+  <div class="frame">
+    <div class="frame-row"><div class="n">1</div><div class="c"><b>The steps shrink by themselves</b><span> &mdash; 50, 25, 12.5, 6.25, 3.125. Nobody programmed that. The learning rate never changed. The steps shrink because <em>the slope flattens as you approach the bottom</em>, and the step is proportional to the slope. So descent naturally takes bold strides when it's far away and careful ones when it's close &mdash; exactly the behaviour you would design in by hand, arriving for free. This is also why loss curves have their characteristic shape: a steep initial drop, then a long flattening tail.</span></div></div>
+    <div class="frame-row"><div class="n">2</div><div class="c"><b>It never exactly arrives</b><span> &mdash; each step closes half the remaining gap, so <span class="var">c</span> gets to 199.9, then 199.99, and never precisely 200. This is normal and nothing to fix. Optimization gives you <em>close enough</em>, which is why Section 7's stopping rules are about tolerances rather than exact equality. Testing for <code>gradient == 0</code> would loop forever.</span></div></div>
+    <div class="frame-row"><div class="n">3</div><div class="c"><b>The cost bottoms out at 266.7, not at zero</b><span> &mdash; even at the perfect <span class="var">c</span> = 200 the cost is 266.7, because a single constant cannot pass through three different prices. That residue is not the optimizer's failure; it's the price of the <em>model shape</em> you chose (Lesson 5: "shape is a bet"). Optimization finds the best member of the family you specified. It cannot rescue you from having specified a poor family &mdash; that is a different problem, with its own name and its own lesson (bias, Lesson 13).</span></div></div>
+  </div>
+
+  <p class="code-cap">the training loop, now with every slot filled</p>
+  <pre><code><span class="tok-c"># Lesson 5 gave us model + parameters.  Lesson 6 gave us loss.</span>
+<span class="tok-c"># This lesson supplies the last two lines.</span>
+
+theta = init_parameters()              <span class="tok-c"># start anywhere on the landscape</span>
+alpha = <span class="tok-n">0.25</span>                          <span class="tok-c"># the learning rate: our step size</span>
+
+<span class="tok-k">for</span> step <span class="tok-k">in</span> range(num_steps):
+    y_hat = model(X, theta)            <span class="tok-c"># the MODEL predicts       (Lesson 5)</span>
+    J     = loss(y, y_hat)             <span class="tok-c"># the COST: our height     (Lesson 6)</span>
+    grad  = gradient(J, theta)         <span class="tok-c"># which way is UP          (this lesson)</span>
+    theta = theta - alpha * grad       <span class="tok-c"># step the other way       (this lesson)</span>
+
+    <span class="tok-k">if</span> norm(grad) &lt; tolerance:         <span class="tok-c"># flat ground: we're done  (Section 7)</span>
+        <span class="tok-k">break</span></code></pre>
+
+  <p>That is the complete skeleton of supervised learning. Everything in Parts III and IV changes what <code>model</code> and <code>loss</code> are; this loop stays put. It's worth appreciating how little there is here &mdash; the mystique of "training a model" resolves into four lines and a convergence check.</p>
+
+  <!-- =================================================================== -->
+  <h2 id="lr">5 &middot; The learning rate: one number that decides everything</h2>
+
+  <p><span class="var">&alpha;</span> is not a detail. It is the difference between a model that trains, a model that never converges, and a model that overflows to <code>NaN</code> in nine steps. Our little problem is simple enough that we can see all three outcomes exactly.</p>
+
+  <div class="callout math">
+    <div class="callout-label">Why this example lets us predict the behaviour precisely</div>
+    <p>Let <span class="var">g</span> = <span class="var">c</span> &minus; 200 be the gap to the optimum. The update is <span class="var">c</span> &larr; <span class="var">c</span> &minus; <span class="var">&alpha;</span>&middot;2<span class="var">g</span>, so the new gap is <span class="var">g</span> &minus; 2<span class="var">&alpha;g</span> = <strong>(1 &minus; 2<span class="var">&alpha;</span>)&middot;<span class="var">g</span></strong>. Every step multiplies the gap by the same fixed number. Whether training succeeds is therefore decided entirely by whether that multiplier sits inside &minus;1 and +1 &mdash; a question about <span class="var">&alpha;</span> and nothing else.</p>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Learning rate <span class="var">&alpha;</span></th><th>Gap multiplier</th><th>Behaviour</th><th>Trace from <span class="var">c</span> = 100</th></tr></thead>
+      <tbody>
+        <tr><td>0.005</td><td>0.99</td><td>Converges, painfully slowly</td><td>101 &rarr; 102 &rarr; 103 &rarr; &hellip; (~450 steps)</td></tr>
+        <tr><td><b>0.25</b></td><td>0.5</td><td><b>Healthy &mdash; halves the gap each step</b></td><td>150 &rarr; 175 &rarr; 187.5 &rarr; 193.75</td></tr>
+        <tr><td>0.5</td><td>0</td><td>Lands exactly, in one step</td><td>200 &#10003;</td></tr>
+        <tr><td>0.75</td><td>&minus;0.5</td><td>Overshoots, but closes in</td><td>250 &rarr; 175 &rarr; 212.5 &rarr; 193.75</td></tr>
+        <tr><td>1.0</td><td>&minus;1</td><td>Oscillates forever, never converges</td><td>300 &rarr; 100 &rarr; 300 &rarr; 100 &hellip;</td></tr>
+        <tr><td>1.5</td><td>&minus;2</td><td><b>Diverges &mdash; explodes</b></td><td>400 &rarr; &minus;200 &rarr; 1,000 &rarr; &minus;1,400</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Sit with the last two rows. The data is fine. The model is fine. The gradient is computed perfectly correctly at every step. And training still fails completely &mdash; producing garbage in the &alpha; = 1.5 case &mdash; because of a single constant. <strong>When someone says their loss became <code>NaN</code>, this is the first thing to check, and it is usually the answer.</strong></p>
+
+  <div class="callout intuition">
+    <div class="callout-label">What is actually going wrong when it explodes</div>
+    <p>The gradient is trustworthy only <em>near</em> where it was measured &mdash; it describes the tilt under your boots. Take a small step and that description still roughly holds, so you land lower. Take an enormous step and you leap clear across the valley and partway up the far slope, landing <em>higher</em> than you started. Now you are further out, so the slope there is steeper, so the next leap is bigger still. Each step amplifies the last and the whole thing runs away to infinity within a few iterations.</p>
+    <p>So the failure mode isn't that the gradient lied. It's that you took a local truth and applied it globally. The learning rate is precisely your statement about <strong>how far you're willing to trust a local measurement</strong>.</p>
+  </div>
+
+  <div class="callout limit">
+    <div class="callout-label">The &alpha; = 0.5 row is a trap</div>
+    <p>Landing exactly on the answer in one step looks like the ideal setting, and it is &mdash; <em>for this problem</em>. That value works only because it precisely matches the curvature of this particular bowl. Change the dataset and it's wrong; add a second parameter, whose valley has different curvature in a different direction, and no single &alpha; is perfect for both. Never read a "best learning rate" off one example. Practical advice: <strong>start around 0.01, watch the loss curve, and adjust by factors of 3 or 10</strong> &mdash; not by small tweaks, since the useful range spans orders of magnitude. Lesson 21 makes this a systematic search rather than a craft.</p>
+  </div>
+
+  <p>The loss curve is your instrument for this, and it is genuinely diagnostic:</p>
+
+  <div class="frame">
+    <div class="frame-row"><div class="n">1</div><div class="c"><b>Smooth drop, then flattening</b><span> &mdash; healthy. This is what you want to see. If it flattens while the loss is still high, consider a slightly larger &alpha;, or accept that the model shape is the limit.</span></div></div>
+    <div class="frame-row"><div class="n">2</div><div class="c"><b>Falls, but barely &mdash; nearly a straight gentle line</b><span> &mdash; &alpha; is too small. You will converge eventually and waste hours doing it. Multiply &alpha; by 10.</span></div></div>
+    <div class="frame-row"><div class="n">3</div><div class="c"><b>Jagged, bouncing, refusing to settle</b><span> &mdash; &alpha; is slightly too large: you are overshooting and bouncing across the valley. Divide by 3 or 10.</span></div></div>
+    <div class="frame-row"><div class="n">4</div><div class="c"><b>Rises, or becomes <code>NaN</code> / <code>inf</code></b><span> &mdash; &alpha; is far too large; the run has diverged. Stop it. Divide &alpha; by 100 and restart. (If that doesn't fix it, check for unscaled features &mdash; see below.)</span></div></div>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="stuck">6 &middot; When the walk goes wrong</h2>
+
+  <p>Descent has no map. Four situations follow from that, and it's worth knowing which are real threats and which are folklore.</p>
+
+  <h3>Local minima</h3>
+
+  <div class="callout def">
+    <div class="callout-label">Local minimum</div>
+    <p>A point that is lower than everything immediately around it, but not the lowest point overall. A small side-valley partway down the mountain. Descent walks into it, finds every direction leads up, concludes it has arrived &mdash; and stops, with a model that is worse than it needed to be. Because the gradient is local, <strong>this is undetectable from the inside</strong>: the flat ground of a local minimum and the flat ground of the true bottom feel identical.</p>
+  </div>
+
+  <p>Here is the reassuring part, and it's the reason this course can teach optimization in one lesson. A loss surface that is <strong>convex</strong> &mdash; bowl-shaped, with no side-valleys anywhere &mdash; has exactly one minimum, so any local minimum <em>is</em> the global one, and descent is guaranteed to find it. And it happens that <strong>linear regression with MSE and logistic regression with log loss are both convex.</strong></p>
+
+  <div class="callout why">
+    <div class="callout-label">Why nobody in classical ML loses sleep over local minima</div>
+    <p>Almost every model in this course sits on a convex surface. Set a sane learning rate and convergence to the best possible parameters is a mathematical guarantee, not a hope. The models with genuinely awkward, non-convex landscapes &mdash; full of local minima and saddle points &mdash; are neural networks, which is one reason deep learning needed a decade of specialised tricks to become trainable at all.</p>
+    <p>Keep this as a boundary marker for the course: <em>classical ML mostly optimizes convex surfaces; deep learning does not.</em> When Lesson 29 describes what changes past this course's edge, this is one of the changes.</p>
+  </div>
+
+  <h3>Saddle points and plateaus</h3>
+
+  <p>A <strong>saddle point</strong> is flat but goes <em>up</em> in one direction and <em>down</em> in another &mdash; a mountain pass. The gradient is zero, so descent slows to a crawl or stops, even though escape routes exist nearby. A <strong>plateau</strong> is a wide, nearly flat region: the gradient is tiny, the steps are tiny, and progress becomes glacial without ever formally stopping. Neither is common in the convex problems ahead, but both explain a loss curve that has gone flat while the loss is still bad.</p>
+
+  <h3>Long narrow valleys &mdash; the one that will actually bite you</h3>
+
+  <div class="callout practice">
+    <div class="callout-label">Why unscaled features wreck training</div>
+    <p>Suppose you predict house price from <em>size in square metres</em> (values around 60&ndash;200) and <em>number of bedrooms</em> (values around 1&ndash;5). The size parameter changes the predictions enormously for the same nudge; the bedroom parameter barely moves them. The cost landscape is therefore not a round bowl but a <strong>long, narrow, steep-walled ravine</strong>.</p>
+    <p>Descent behaves badly here for a very concrete reason: the steepest downhill direction points across the ravine, not along it. So the walk bounces from wall to wall, zigzagging, while creeping along the valley floor almost imperceptibly. Any &alpha; big enough to make progress along the valley is big enough to diverge across it. You are stuck between "too slow" and "explodes", with no good value in between.</p>
+    <p>The fix is not a cleverer optimizer. It is <strong>feature scaling</strong>: rescale every feature to a comparable range, and the ravine becomes a round bowl in which every direction has similar curvature and one learning rate serves all parameters. This is the single most common reason a correct implementation trains badly, and Lesson 12 covers exactly how to do it.</p>
+  </div>
+
+  <div class="callout intuition">
+    <div class="callout-label">Momentum and adaptive methods, in one paragraph</div>
+    <p>Plain gradient descent has an obvious weakness: it forgets. Each step is decided solely by the current slope, with no memory of the direction it has been travelling. <strong>Momentum</strong> fixes that by accumulating a running average of past gradients &mdash; like a heavy ball rolling downhill, it keeps going through small flat patches and its side-to-side zigzags cancel out while its along-the-valley motion accumulates. <strong>Adaptive methods</strong> (RMSProp, and the ubiquitous <strong>Adam</strong>) go further and maintain a <em>separate</em> effective learning rate per parameter, automatically taking smaller steps in steep directions and larger ones in flat directions. You will see <code>optimizer="adam"</code> everywhere in deep learning. They are refinements of the update rule you already know &mdash; not different ideas &mdash; and classical ML rarely needs them, so we note them and move on.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="variants">7 &middot; How much data per step, and when to stop</h2>
+
+  <p>One question remains unasked. Computing the gradient requires the residuals, which requires predictions for the data &mdash; but <em>how much</em> data? Using all of it every step is the obvious answer, and for a million rows it is also an expensive one, paid on every single step.</p>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Variant</th><th>Data per step</th><th>Gradient quality</th><th>Speed per step</th><th>Path to the bottom</th></tr></thead>
+      <tbody>
+        <tr><td><b>Batch</b> GD</td><td>the entire dataset</td><td>exact</td><td>slow</td><td>smooth, direct</td></tr>
+        <tr><td><b>Stochastic</b> GD (SGD)</td><td>one example</td><td>very noisy</td><td>very fast</td><td>erratic, jittery</td></tr>
+        <tr><td><b>Mini-batch</b> GD</td><td>a small group (32&ndash;256)</td><td>good approximation</td><td>fast</td><td>slightly noisy, efficient</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>The trade is between the <em>accuracy</em> of each step and the <em>number</em> of steps you can afford. A noisy gradient from 32 examples still points roughly downhill, and you can take a hundred such steps in the time batch descent takes one &mdash; so you end up much further down. <strong>Mini-batch is the default everywhere</strong>, for that reason.</p>
+
+  <div class="callout intuition">
+    <div class="callout-label">The noise is sometimes a feature</div>
+    <p>Counter-intuitively, a noisy gradient can be <em>helpful</em>. A jittery step can knock the walk out of a shallow local minimum or off a saddle point that exact batch descent would have settled into permanently. Randomness as an escape mechanism &mdash; it matters little for the convex problems in this course, but it is one of the reasons SGD works so well for neural networks.</p>
+  </div>
+
+  <h3>Knowing when to stop</h3>
+
+  <div class="frame">
+    <div class="frame-row"><div class="n">1</div><div class="c"><b>A fixed number of iterations</b><span> &mdash; simplest and very common; run 1,000 steps and inspect the curve. Blunt, but honest, and it bounds your compute budget.</span></div></div>
+    <div class="frame-row"><div class="n">2</div><div class="c"><b>The gradient is small enough</b><span> &mdash; stop when the gradient's magnitude drops below a tolerance. Directly encodes "the ground is flat, there's nothing left to do".</span></div></div>
+    <div class="frame-row"><div class="n">3</div><div class="c"><b>The cost has stopped improving</b><span> &mdash; stop when J changes by less than some tiny amount between steps. The most practical rule, and the easiest to read off a plot.</span></div></div>
+    <div class="frame-row"><div class="n">4</div><div class="c"><b>Error on held-out data starts rising</b><span> &mdash; <strong>early stopping</strong>. The one that measures what you actually care about. Note it is different in kind from the other three: they ask "has the optimizer converged?", this asks "is the model still getting better at its job?" Those questions have different answers, and the gap between them is overfitting (Lessons 13 and 19).</span></div></div>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="limitations">8 &middot; Limitations &mdash; what to keep honest about</h2>
+  <div class="callout limit">
+    <div class="callout-label">Guardrails to carry forward</div>
+    <ul>
+      <li><strong>Optimization finds the best parameters, not the best model.</strong> Our descent nailed <span class="var">c</span> = 200 and the cost still sat at 266.7. A perfect optimizer on a badly chosen model family gives you the best of a bad set. "Training converged" and "the model is good" are unrelated claims.</li>
+      <li><strong>Converged does not mean correct.</strong> Descent will happily converge to a low training loss on a model that has memorised the data and will fail on anything new. The gradient never looks at unseen data. Nothing in this lesson can detect overfitting &mdash; that requires Lesson 19's methodology, not a better optimizer.</li>
+      <li><strong>There is no universally good learning rate.</strong> It depends on the loss, the model, the data's scale, and the batch size. Any number you're given &mdash; including 0.01 &mdash; is a starting point for a search, never a setting.</li>
+      <li><strong>Guarantees are conditional on convexity.</strong> "Gradient descent finds the global optimum" is true for the convex problems in this course and false in general. Repeating the guarantee outside its conditions is a common and confident error.</li>
+      <li><strong>Some models don't use gradient descent at all.</strong> Decision trees (Lesson 16) grow by greedy splitting; k-NN (Lesson 15) doesn't train at all; Naive Bayes (Lesson 17) counts frequencies directly. Gradient descent is dominant, not universal &mdash; it needs a continuous parameter vector and a differentiable loss, and not every model has either.</li>
+      <li><strong>Smooth in theory, awkward in floating point.</strong> Overflow, underflow, and vanishing precision are real; libraries contain a great deal of numerical care that clean mathematics doesn't reveal. This is one reason to use Scikit-learn in production and write from scratch only to learn.</li>
+    </ul>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="connection">How this connects to the next lesson</h2>
+  <div class="callout connect">
+    <div class="callout-label">Bridge to Lesson 8 &mdash; the scientific Python stack</div>
+    <p>Module 1 is complete, and the training loop has no empty slots left. Lesson 5 defined the <strong>model</strong> and its <strong>parameters</strong>, and drew the landscape. Lesson 6 defined the <strong>loss</strong> that sets the landscape's height. Lesson 7 supplied the <strong>gradient</strong> that reads the local slope and the <strong>update rule</strong> that takes the step. Those four ideas &mdash; model, loss, gradient, step &mdash; are the entire conceptual content of supervised learning, and everything remaining in this course is a specific choice for one of the slots.</p>
+    <p>Which is why the next two lessons are about <em>equipment</em> rather than theory. <strong>Lesson 8</strong> covers NumPy, Pandas, and Matplotlib: how to hold a dataset as an array, compute a whole gradient without writing a loop, and plot the loss curve you now know how to read. <strong>Lesson 9</strong> tightens the mathematical vocabulary just enough &mdash; vectors, derivatives, probability &mdash; to make Lesson 10's derivations comfortable rather than intimidating. Then <strong>Lesson 10</strong> and <strong>Lesson 11</strong> take this exact loop, this exact update rule, and build a working Linear Regression in raw NumPy. You will recognise every line.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="exercises">Exercises &amp; reflection</h2>
+  <p>Exercise 1 is the important one &mdash; running the loop by hand is what converts this from something you've read into something you know.</p>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 1 &middot; Run four steps yourself</div>
+    <p>Same three houses (180, 200, 220), same constant model, gradient 2(<span class="var">c</span> &minus; 200). This time start at <span class="var">c</span> = 300 &mdash; <em>above</em> the optimum &mdash; with <span class="var">&alpha;</span> = 0.25. Compute four steps, writing down the gradient, the step taken, and the new <span class="var">c</span> each time. Before you start, predict the sign of the gradient and which way <span class="var">c</span> will move.</p>
+    <details><summary>Show solution</summary>
+      <div class="details-body">
+        <p>Starting above the optimum, the gradient is <em>positive</em> (going right increases cost), so &minus;&alpha;&middot;grad is negative and <span class="var">c</span> moves <strong>down</strong>. Step 0: <span class="var">c</span>=300, grad = 2(100) = +200, step = &minus;50 &rarr; 250. Step 1: grad = +100, step = &minus;25 &rarr; 225. Step 2: grad = +50, step = &minus;12.5 &rarr; 212.5. Step 3: grad = +25, step = &minus;6.25 &rarr; 206.25.</p>
+        <p>Note the symmetry with the lesson's table: the same sequence of step sizes (50, 25, 12.5, 6.25), just in the opposite direction. The rule needed no modification for the "wrong side" case &mdash; the sign of the gradient handled it automatically. That is the whole reason we subtract the gradient rather than writing an <code>if</code>.</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 2 &middot; Break it on purpose</div>
+    <p>Same setup, starting at <span class="var">c</span> = 100, but with <span class="var">&alpha;</span> = 1.2. Compute three steps. What is the gap multiplier (1 &minus; 2&alpha;), and what does the sequence of costs do? Then state the general condition on &alpha; that separates converging from diverging in this problem.</p>
+    <details><summary>Show solution</summary>
+      <div class="details-body">
+        <p>Multiplier = 1 &minus; 2.4 = <strong>&minus;1.4</strong>. Gap starts at &minus;100. Step 0: <span class="var">c</span> = 100 &minus; 1.2(&minus;200) = 340 (gap +140). Step 1: <span class="var">c</span> = 340 &minus; 1.2(280) = 4 (gap &minus;196). Step 2: <span class="var">c</span> = 4 &minus; 1.2(&minus;392) = 474.4 (gap +274.4). The gap flips sign and grows 1.4&times; every step, so the cost rises without bound &mdash; in floating point this reaches <code>inf</code>, then <code>NaN</code>, within a few dozen iterations.</p>
+        <p>The condition is |1 &minus; 2&alpha;| &lt; 1, i.e. <strong>0 &lt; &alpha; &lt; 1</strong> for this particular problem. The general lesson is not the number 1 &mdash; it's that the threshold depends on the <em>curvature</em> of the loss surface, which changes with the model, the loss, and the scale of your features. That is exactly why the safe &alpha; must be found empirically rather than looked up.</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 3 &middot; Read the loss curves</div>
+    <p>You train four models. Diagnose each and say what you'd change:</p>
+    <ol>
+      <li>Loss drops fast for 50 steps, then flattens at a low value and stays there for 950 more.</li>
+      <li>Loss decreases in a nearly straight, very gentle line and is still clearly falling at step 1,000.</li>
+      <li>Loss jumps up and down between 400 and 900 for the whole run, with no trend.</li>
+      <li>Loss goes 500, 2,000, 40,000, <code>inf</code>, <code>NaN</code>.</li>
+    </ol>
+    <details><summary>Show discussion</summary>
+      <div class="details-body">
+        <p>(1) <strong>Healthy convergence.</strong> Nothing to fix in the optimizer &mdash; you could stop at step 200 and save the compute. If the final loss is still unacceptably high, the limit is the model family, not the training. (2) <strong>&alpha; too small.</strong> It's working, just slowly; multiply &alpha; by 10. Also consider running longer if compute allows. (3) <strong>&alpha; slightly too large</strong> &mdash; overshooting and bouncing across the valley without diverging. Divide by 3 or 10. If it persists at small &alpha;, suspect unscaled features creating a narrow ravine (Lesson 12). (4) <strong>Divergence.</strong> &alpha; is far too large. Divide by 100 and restart; if it still explodes, check feature scaling and look for extreme values or a bug in the gradient sign.</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 4 &middot; Explain the fog</div>
+    <p>In four or five sentences, explain to a fellow engineer why gradient descent uses only local information, and what two consequences follow from that. Use the words <em>local</em>, <em>step size</em>, and <em>guarantee</em>. Then answer: why does a convex loss surface make one of those consequences disappear?</p>
+  </div>
+
+  <div class="callout intuition">
+    <div class="callout-label">One-paragraph summary to lock it in</div>
+    <p>We cannot find good parameters by searching (100 values per parameter becomes 10<sup>20</sup> combinations by ten parameters) or by algebra (closed-form solutions rarely exist and don't generalize), so we descend instead. The <strong>slope</strong> is a number you can measure by nudging a parameter and dividing the change in cost by the size of the nudge; its <em>sign</em> tells you which way is downhill, and the <strong>gradient</strong> collects one such slope per parameter into a vector that points toward steepest <em>increase</em> &mdash; hence the minus in the update rule <span class="var">&theta; &larr; &theta; &minus; &alpha;&nabla;J</span>. Running that rule by hand on three house prices took a guess of 100 to within 1.6 of the optimum in six steps, with the steps shrinking on their own (50, 25, 12.5&hellip;) because the slope flattens near the bottom, and with the cost bottoming out at 266.7 rather than zero because the <em>model shape</em>, not the optimizer, sets that floor. The <strong>learning rate</strong> is the one genuinely dangerous knob: on the same problem, &alpha; = 0.25 converges cleanly, &alpha; = 1.0 oscillates forever, and &alpha; = 1.5 explodes &mdash; the gradient being a purely <em>local</em> truth that a large step applies globally. Descent can also stall in local minima, saddle points, plateaus, and long narrow ravines caused by unscaled features (fixable, Lesson 12) &mdash; but linear and logistic regression are <strong>convex</strong>, so for almost everything in this course a sane &alpha; guarantees the global optimum. Mini-batch gradients trade exactness for many more steps and win. Module 1 is now complete: model, loss, gradient, step &mdash; and Lesson 10 will build a real algorithm from exactly these four parts.</p>
+  </div>
+
+  <nav class="lessonnav">
+    <a class="prev" href="lesson-06.html">
+      <span class="dir">&larr; Previous</span>
+      <span class="ttl">Lesson 6 &middot; Loss Functions</span>
+    </a>
+    <a class="next" href="lesson-08.html">
+      <span class="dir">Next &rarr;</span>
+      <span class="ttl">Lesson 8 &middot; The scientific Python stack</span>
+    </a>
+  </nav>
+
+</main>
+
+<footer class="foot">
+  Lesson 7 of 29 &middot; AI &rarr; Machine Learning &middot; Understand the <em>why</em> before the <em>how</em>.
+  <span class="byline">&copy; 2026 <a href="https://www.linkedin.com/in/adda-missoum-a534a7319/">Missoum Hadi Adda</a> &middot; Licensed <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>, code <a href="https://opensource.org/license/mit">MIT</a> &middot; <a href="https://github.com/addahadi/ai-to-ml">Source</a> &middot; Built with <a href="https://claude.com/claude-code">Claude Code</a></span>
+  <img src="https://addahadi.goatcounter.com/count?p=/modules/lesson-07.html" alt="" width="1" height="1">
+</footer>
+
+</body>
+</html>

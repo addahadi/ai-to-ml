@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 3 — AI vs ML vs Deep Learning vs Data Science</title>
+<link rel="stylesheet" href="../assets/style.css">
+<meta name="description" content="A clear map of AI vs Machine Learning vs Deep Learning vs Data Science, and where each one begins and ends.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="AI → Machine Learning">
+<meta property="og:title" content="Lesson 3 — AI vs ML vs Deep Learning vs Data Science">
+<meta property="og:description" content="A clear map of AI vs Machine Learning vs Deep Learning vs Data Science, and where each one begins and ends.">
+<meta property="og:url" content="https://addahadi.github.io/ai-to-ml/modules/lesson-03.html">
+<meta name="twitter:card" content="summary">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand-mark" href="../index.html">AI<span>→</span>ML</a>
+    <nav>
+      <a href="../index.html">Roadmap</a>
+      <a href="#nesting">The nesting</a>
+      <a href="#datascience">Data Science</a>
+      <a href="#genai">Generative AI</a>
+      <a href="#decide">Decide</a>
+      <a href="#exercises">Exercises</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="crumb"><a href="../index.html">Roadmap</a> &nbsp;›&nbsp; Part I · The AI Landscape &nbsp;›&nbsp; Module 0 · Orientation</div>
+
+  <section class="hero">
+    <span class="eyebrow">Lesson 03 · Foundations</span>
+    <h1>AI vs ML vs Deep Learning vs Data Science</h1>
+    <p class="lead">Four words are used almost interchangeably in job postings, headlines, and conference talks — and the confusion is not harmless. Getting the relationships exactly right tells you what each field <em>does</em>, what it <em>can't</em>, and precisely where this course sits.</p>
+    <div class="meta-row">
+      <span><b>Reading:</b> ~22 min</span>
+      <span><b>Prerequisites:</b> Lessons 1–2</span>
+      <span><b>Code:</b> none — this is the map, sharpened</span>
+    </div>
+  </section>
+
+  <div class="callout why">
+    <div class="callout-label">Why a whole lesson on four words</div>
+    <p>Lesson 1 gave you a rough containment sketch (AI ⊃ ML ⊃ NN ⊃ DL). That was enough to start. But these four terms are the ones you'll be asked about in interviews, the ones marketing departments blur on purpose, and the ones that decide whether a project needs a laptop or a GPU cluster. <strong>By the end you'll be able to take any real system or job description and say, without hesitation, which boxes it lives in and why</strong> — including the four adjacent terms (neural networks, generative AI, LLMs, data science) that people constantly mis-file.</p>
+  </div>
+
+  <h2 id="learning-goals">What this lesson delivers</h2>
+  <ul class="checklist">
+    <li>The precise containment relationship between AI, ML, Neural Networks, and Deep Learning — and why each nesting is real, not marketing.</li>
+    <li>Why Data Science is <em>not</em> in that nesting at all, but an overlapping discipline.</li>
+    <li>Where Generative AI and LLMs actually sit (spoiler: two levels below where we stop).</li>
+    <li>A concrete, side-by-side comparison you can apply to any system.</li>
+    <li>A decision rule for choosing classical ML vs Deep Learning — the practical payoff.</li>
+  </ul>
+
+  <!-- =================================================================== -->
+  <h2 id="nesting">1 · The nesting: four Russian dolls</h2>
+
+  <p>The single most useful mental image is a set of nested circles — each term is a strict subset of the one before it. Let's build it from the outside in, and for each layer state the <em>defining move</em> that separates it from its parent.</p>
+
+  <div class="frame">
+    <div class="frame-row"><div class="n">1</div><div class="c"><b>Artificial Intelligence</b><span> — the outermost circle. Any technique that makes a machine act intelligently toward a goal: search, hand-written logic, statistical learning, or bio-inspired methods. <em>Defining move:</em> goal-directed behavior, by <em>any</em> means — including means with no learning at all.</span></div></div>
+    <div class="frame-row"><div class="n">2</div><div class="c"><b>Machine Learning ⊂ AI</b><span> — the subset where behavior is <em>learned from data</em> rather than explicitly programmed. <em>Defining move:</em> the rules come from examples, not from a person writing them down. <strong>This is our course.</strong></span></div></div>
+    <div class="frame-row"><div class="n">3</div><div class="c"><b>Neural Networks ⊂ ML</b><span> — one <em>family</em> of ML models, loosely inspired by interconnected brain neurons: layers of simple units with tunable weights. <em>Defining move:</em> the model is a network of weighted connections, not a tree, a line, or a distance rule.</span></div></div>
+    <div class="frame-row"><div class="n">4</div><div class="c"><b>Deep Learning ⊂ Neural Networks</b><span> — neural networks with <em>many</em> hidden layers ("deep"), which lets them learn features automatically. <em>Defining move:</em> depth — enough layers that the network discovers its own representations instead of being handed them. <strong>Deliberately outside our scope.</strong></span></div></div>
+  </div>
+
+  <div class="callout intuition">
+    <div class="callout-label">Read the nesting as a chain of "how"</div>
+    <p>Each layer answers "<em>how</em> does the layer above do its job, in this particular case?" <strong>How</strong> does this AI act intelligently? By learning from data → it's ML. <strong>How</strong> does this ML model represent the problem? As a network of neurons → it's a neural network. <strong>How</strong> deep is that network? Many layers → it's Deep Learning. Every step inward is a more specific commitment, and every step inward is a strictly smaller set of systems.</p>
+  </div>
+
+  <p>The nesting also means the arrows only point one way. Every Deep Learning system is Machine Learning; <em>not</em> every Machine Learning system is Deep Learning. A GPS route-finder is AI but not ML (it searches, it doesn't learn). A decision tree is ML but not a neural network. This directionality is exactly what people get wrong when they call every clever program "AI" or every ML model "deep learning."</p>
+
+  <div class="callout def">
+    <div class="callout-label">The one-line test for each boundary</div>
+    <ul>
+      <li><b>Is it AI?</b> Does it act toward a goal on a task we'd call intelligent? (Even hand-coded rules count.)</li>
+      <li><b>Is it ML?</b> Would its behavior change if you fed it different training data — <em>without</em> you rewriting code?</li>
+      <li><b>Is it a neural network?</b> Is the model literally layers of weighted units?</li>
+      <li><b>Is it Deep Learning?</b> Does that network have many layers that learn features on their own?</li>
+    </ul>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="ml-vs-dl">2 · The boundary that matters most: classical ML vs Deep Learning</h2>
+
+  <p>The nesting is tidy, but as an engineer the practically important line is between layers 2 and 4: <strong>classical (statistical) Machine Learning</strong> — where this course lives — versus <strong>Deep Learning</strong>. They are not rivals so much as tools for different regimes. Here's the honest comparison.</p>
+
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr><th>Dimension</th><th>Classical ML (this course)</th><th>Deep Learning</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><b>Best data type</b></td><td>Structured / tabular (rows &amp; columns, spreadsheets, databases)</td><td>Unstructured (images, audio, raw text)</td></tr>
+        <tr><td><b>Features</b></td><td><em>You</em> engineer them — pick and shape the input columns</td><td>The network <em>learns</em> them from raw input</td></tr>
+        <tr><td><b>Data hunger</b></td><td>Works well on hundreds–thousands of rows</td><td>Typically needs tens of thousands to millions</td></tr>
+        <tr><td><b>Compute</b></td><td>Trains on a laptop CPU in seconds–minutes</td><td>Often needs GPUs/TPUs and hours–days</td></tr>
+        <tr><td><b>Interpretability</b></td><td>Often high (a tree or linear model explains itself)</td><td>Usually low (a "black box" needing extra tooling)</td></tr>
+        <tr><td><b>Typical wins</b></td><td>Fraud, churn, pricing, risk, most business/tabular problems</td><td>Vision, speech, translation, generative text/images</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout why">
+    <div class="callout-label">Why we stop at classical ML — and why that's the right call</div>
+    <p>Deep Learning gets the headlines, but classical ML is still the correct tool for the <em>majority</em> of real-world problems, which are tabular, data-limited, and interpretability-sensitive. More importantly, classical ML is where every core idea — model, loss, optimization, overfitting, evaluation — appears in its <em>simplest, most visible form</em>. Deep Learning reuses all of them, just buried under layers. Learn them here, cleanly, and the deep stuff later becomes "more of the same, scaled up" rather than a new mystery.</p>
+  </div>
+
+  <p>The key structural difference is worth dwelling on: <strong>feature engineering</strong>. In classical ML, <em>you</em> decide that "price per square meter" or "days since last purchase" is the meaningful signal — the model only fits weights to features you designed. In Deep Learning, you hand the network raw pixels or characters and its many layers <em>discover</em> useful features themselves. That single shift — who invents the features — is the deepest reason Deep Learning needs so much more data and compute, and why it becomes a black box. Depth buys automatic feature-learning; the price is data, compute, and interpretability.</p>
+
+  <!-- =================================================================== -->
+  <h2 id="datascience">3 · Data Science: the term that is <em>not</em> in the nesting</h2>
+
+  <p>Here is where most explanations go wrong. Data Science is <strong>not</strong> a doll inside the AI set. It overlaps AI/ML, but it is a distinct discipline with a different goal.</p>
+
+  <div class="callout def">
+    <div class="callout-label">Working definition</div>
+    <p><strong>Data Science</strong> is the interdisciplinary practice of extracting <em>insight and value</em> from data. It blends statistics, programming, and domain expertise, and its deliverable is often a <em>decision, a report, or a dashboard</em> — not necessarily a deployed model. Machine Learning is one tool in its kit, alongside data cleaning, exploratory analysis, visualization, and classical statistics.</p>
+  </div>
+
+  <p>The clarifying question is <em>what is the deliverable?</em></p>
+  <ul>
+    <li><strong>Machine Learning's</strong> deliverable is a <em>model</em> — an artifact that makes predictions on new inputs. The goal is predictive performance.</li>
+    <li><strong>Data Science's</strong> deliverable is often <em>understanding</em> — "why did churn rise last quarter?", "which customers matter most?". The goal is insight that guides a human decision.</li>
+  </ul>
+
+  <p>These overlap heavily: a data scientist frequently trains ML models, and an ML engineer does plenty of data analysis. But the fields are not nested. Plenty of high-value data science uses no ML at all (a well-designed A/B test, a cohort analysis, a clear chart), and plenty of ML is pure engineering with little "science" (retraining a known model on fresh data in a pipeline).</p>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th></th><th>Primary goal</th><th>Typical deliverable</th><th>Relationship</th></tr></thead>
+      <tbody>
+        <tr><td><b>AI</b></td><td>Make machines act intelligently</td><td>An autonomous/goal-seeking system</td><td>The umbrella field</td></tr>
+        <tr><td><b>ML</b></td><td>Predict well from data</td><td>A trained model</td><td>Subset of AI; tool of Data Science</td></tr>
+        <tr><td><b>Deep Learning</b></td><td>Learn from raw, unstructured data</td><td>A trained deep network</td><td>Subset of ML</td></tr>
+        <tr><td><b>Data Science</b></td><td>Extract insight to guide decisions</td><td>Reports, dashboards, decisions, sometimes models</td><td><em>Overlaps</em> ML — not nested</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="genai">4 · Where Generative AI and LLMs actually live</h2>
+
+  <p>Because you'll be asked about them constantly, let's place today's headline technologies precisely on the map.</p>
+
+  <div class="frame">
+    <div class="frame-row"><div class="n">→</div><div class="c"><b>Generative AI</b><span> — models that <em>produce new content</em> (text, images, audio, code) rather than only labeling or scoring existing input. It is a <em>capability</em>, and today it is delivered almost entirely by Deep Learning — so it sits inside box 4.</span></div></div>
+    <div class="frame-row"><div class="n">→</div><div class="c"><b>Large Language Models (LLMs)</b><span> — ChatGPT, Claude, and kin: very large deep neural networks (the "transformer" architecture) trained on enormous text corpora. They are a <em>specific kind</em> of Generative AI, so they nest even deeper: LLM ⊂ Generative AI ⊂ Deep Learning ⊂ Neural Networks ⊂ ML ⊂ AI.</span></div></div>
+  </div>
+
+  <div class="callout limit">
+    <div class="callout-label">The scope boundary, stated plainly</div>
+    <p>LLMs and generative models are <strong>two levels below where this course stops.</strong> That is not because they're unimportant — it's because they're deep-learning applications, and you cannot understand a transformer without first understanding the ML fundamentals (loss, gradient descent, overfitting, evaluation) that this course teaches in their clean, classical form. We mention generative AI only to locate it on the map. When you finish here, you'll have the exact foundation those systems are built on.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="examples">5 · The map applied — worked classifications</h2>
+
+  <p>Abstractions stick when you run them against real systems. For each, we tag every box it occupies.</p>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>System</th><th>AI?</th><th>ML?</th><th>Deep Learning?</th><th>Data Science?</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>GPS shortest-route finder</td><td>Yes</td><td>No</td><td>No</td><td>No</td><td>Search/planning — goal-directed but learns nothing from data</td></tr>
+        <tr><td>Spam filter trained on your "mark as spam"</td><td>Yes</td><td>Yes</td><td>Usually no</td><td>Overlaps</td><td>Learns rules from labeled examples; classical ML suffices</td></tr>
+        <tr><td>Churn dashboard + cohort analysis</td><td>No*</td><td>Maybe</td><td>No</td><td>Yes</td><td>Insight for humans; may use ML but often just statistics</td></tr>
+        <tr><td>Face recognition on your phone</td><td>Yes</td><td>Yes</td><td>Yes</td><td>No</td><td>Deep network learning features from raw pixels</td></tr>
+        <tr><td>ChatGPT / Claude</td><td>Yes</td><td>Yes</td><td>Yes</td><td>No</td><td>LLM ⊂ Generative AI ⊂ Deep Learning</td></tr>
+        <tr><td>Credit-scoring logistic regression</td><td>Yes</td><td>Yes</td><td>No</td><td>Overlaps</td><td>Classical ML on tabular data — interpretable by design</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="font-size:.9em;opacity:.8">*A pure analysis/dashboard with no autonomous decision-making is Data Science but wouldn't usually be called an "AI system" — a good reminder that the terms answer different questions.</p>
+
+  <!-- =================================================================== -->
+  <h2 id="decide">6 · The practical payoff — a decision rule</h2>
+
+  <p>The whole point of getting the map right is to make better choices. Here's the rule of thumb an experienced practitioner actually uses when starting a supervised problem:</p>
+
+  <div class="callout practice">
+    <div class="callout-label">Classical ML or Deep Learning? Start here</div>
+    <ol>
+      <li><strong>Is your data tabular/structured?</strong> → Start with classical ML. It will train in seconds, be interpretable, and is very often the final answer. Reach for Deep Learning only if it clearly underperforms.</li>
+      <li><strong>Is your data raw images, audio, or free text, and do you have lots of it?</strong> → Deep Learning is likely the right tool (outside this course's scope, but now you know <em>why</em>).</li>
+      <li><strong>Do you have little data, or must you explain every decision (regulated finance, medicine, law)?</strong> → Strongly favor classical ML — it needs less data and can be made transparent.</li>
+      <li><strong>Not sure?</strong> → Always <em>baseline with classical ML first.</em> A simple model you understand beats a complex one you don't, and it tells you whether the extra machinery is even worth it.</li>
+    </ol>
+  </div>
+
+  <div class="callout intuition">
+    <div class="callout-label">Engineer's translation</div>
+    <p>Treat model complexity like you treat any dependency: add it only when a simpler thing has demonstrably failed. "Just use a neural network" is the ML equivalent of pulling in a giant framework to do string concatenation. The map you now hold is what lets you make that call deliberately instead of by hype.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="limitations">7 · Limitations — where the neat map gets fuzzy</h2>
+  <div class="callout limit">
+    <div class="callout-label">Honest caveats to carry forward</div>
+    <ul>
+      <li><strong>The boundaries are conventions, not laws.</strong> How many layers make a network "deep"? There's no official threshold. Treat the nesting as a communication tool, not a theorem.</li>
+      <li><strong>Real systems are hybrids.</strong> A self-driving car mixes deep learning (perception), search (planning), and hand-coded rules (legal constraints). "Which box?" is often "several at once."</li>
+      <li><strong>Marketing muddies everything.</strong> Products slap "AI" on plain <code>if</code>-statements and "deep learning" on shallow models. Your job is to ask the one-line boundary tests, not trust the label.</li>
+      <li><strong>Terms drift over time.</strong> "AI" today colloquially often means "generative AI," which would have baffled a 1990s researcher. Anchor to the definitions, and note when someone is using the popular sense.</li>
+    </ul>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="connection">How this connects to the next lesson</h2>
+  <div class="callout connect">
+    <div class="callout-label">Bridge to Lesson 4</div>
+    <p>You can now place any system on the map, and you've committed to box 2 — classical Machine Learning — with clear eyes about what's above and below it. In <strong>Lesson 4 — What Is Machine Learning?</strong> we stop pointing at the box from outside and step <em>inside</em> it: the precise definition of learning, the three types (supervised, unsupervised, reinforcement), and the end-to-end ML workflow that every remaining lesson instantiates. This is where the map becomes a machine.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="exercises">Exercises &amp; reflection</h2>
+  <p>Still no coding — these sharpen the classifications you'll rely on for the rest of the course.</p>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 1 · Tag the boxes</div>
+    <p>For each system, mark which of {AI, ML, Deep Learning, Data Science} apply, and justify in one sentence:</p>
+    <ol>
+      <li>A recommender that suggests movies based on what similar users watched.</li>
+      <li>A quarterly sales report with charts and a trend line, built by hand in a notebook.</li>
+      <li>A voice assistant that transcribes your speech to text.</li>
+      <li>A thermostat schedule you programmed with fixed <code>if time &gt; 18:00</code> rules.</li>
+    </ol>
+    <details><summary>Show discussion</summary>
+      <div class="details-body">
+        <p>(1) AI + ML, overlaps Data Science; usually classical ML (collaborative filtering), not deep. (2) Data Science only — insight for humans, no learned model, arguably not "AI." (3) AI + ML + Deep Learning — speech-to-text is a deep-network task on unstructured audio. (4) Not ML and not really AI in the modern sense — hand-coded rules; at most trivially "symbolic," and it never changes with data.</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 2 · The deliverable test</div>
+    <p>Take a project you've seen or imagined. Ask: <em>is the deliverable a model that predicts, or an insight that informs a human decision?</em> Explain how your answer places it as ML-leaning vs Data-Science-leaning — and note if it's genuinely both.</p>
+  </div>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 3 · Justify the scope</div>
+    <p>In two or three sentences, explain to a peer why a course that stops at classical ML is <em>still</em> the right foundation for eventually understanding LLMs — using the words "features," "loss," and "interpretability."</p>
+  </div>
+
+  <div class="callout intuition">
+    <div class="callout-label">One-paragraph summary to lock it in</div>
+    <p>AI, ML, Neural Networks, and Deep Learning form a strict nesting — each a smaller, more specific way of doing the one above it, with the defining moves being "learn from data," "use a network of neurons," and "make it deep." Data Science is <em>not</em> in that nesting; it overlaps ML but aims at insight for human decisions rather than a deployed model. Generative AI and LLMs sit two levels below where we stop, inside Deep Learning. The practical payoff is a decision rule — baseline with interpretable classical ML, reach for Deep Learning only when raw, abundant, unstructured data demands it — and that classical level is exactly, and deliberately, where this course lives.</p>
+  </div>
+
+  <nav class="lessonnav">
+    <a class="prev" href="lesson-02.html">
+      <span class="dir">← Previous</span>
+      <span class="ttl">Lesson 2 · How Intelligent Systems Are Built</span>
+    </a>
+    <a class="next" href="lesson-04.html">
+      <span class="dir">Next →</span>
+      <span class="ttl">Lesson 4 · What Is Machine Learning?</span>
+    </a>
+  </nav>
+
+</main>
+
+<footer class="foot">
+  Lesson 3 of 29 · AI → Machine Learning · Understand the <em>why</em> before the <em>how</em>.
+  <span class="byline">&copy; 2026 <a href="https://www.linkedin.com/in/adda-missoum-a534a7319/">Missoum Hadi Adda</a> &middot; Licensed <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>, code <a href="https://opensource.org/license/mit">MIT</a> &middot; <a href="https://github.com/addahadi/ai-to-ml">Source</a> &middot; Built with <a href="https://claude.com/claude-code">Claude Code</a></span>
+  <img src="https://addahadi.goatcounter.com/count?p=/modules/lesson-03.html" alt="" width="1" height="1">
+</footer>
+
+</body>
+</html>

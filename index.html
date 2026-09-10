@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI → Machine Learning — Course Roadmap</title>
+<link rel="stylesheet" href="assets/style.css">
+<meta name="description" content="A free, from-scratch course taking a CS graduate from the definition of AI through classical Machine Learning — built in NumPy, understand the why before the how. Stops before deep learning.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="AI → Machine Learning">
+<meta property="og:title" content="AI → Machine Learning — Course Roadmap">
+<meta property="og:description" content="A free, from-scratch course taking a CS graduate from the definition of AI through classical Machine Learning — built in NumPy, understand the why before the how. Stops before deep learning.">
+<meta property="og:url" content="https://addahadi.github.io/ai-to-ml/">
+<meta name="twitter:card" content="summary">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand-mark" href="index.html">AI<span>→</span>ML</a>
+    <nav>
+      <a href="index.html">Roadmap</a>
+      <a href="modules/lesson-01.html">Lesson 1</a>
+      <a href="modules/lesson-09.html">Latest: Lesson 9</a>
+      <a href="#part-1">Foundations</a>
+      <a href="#part-3">Regression</a>
+      <a href="#part-4">Classification</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="hero">
+    <span class="eyebrow">Learning Path · Classical Machine Learning</span>
+    <h1>From Artificial Intelligence to Machine Learning</h1>
+    <p class="lead">A rigorous, progressive curriculum for a computer-science graduate — built on the principle of understanding <em>why</em> before <em>how</em>. We travel from the definition of AI to implementing core ML algorithms from scratch, and we deliberately stop at the edge of Deep Learning.</p>
+    <div class="meta-row">
+      <span><b>29</b> lessons</span>
+      <span><b>8</b> modules</span>
+      <span><b>9</b> live · new lessons in progress</span>
+      <span><b>Scope:</b> AI landscape → Classical ML</span>
+      <span><b>Tools:</b> NumPy · Pandas · Matplotlib · Scikit-learn</span>
+    </div>
+  </section>
+
+  <div class="callout intuition">
+    <div class="callout-label">How to read this roadmap</div>
+    <p>Lessons are ordered so that each concept is a prerequisite for the next. Badges tell you what to expect:
+    <span class="badge ready">Ready</span> means the lesson is written and linked;
+    <span class="badge scratch">From scratch</span> means we build the algorithm in raw NumPy before touching Scikit-learn;
+    <span class="badge soon">Planned</span> means it's on the path and I'll generate it when you reach it.</p>
+  </div>
+
+  <h2>What you'll be able to do at the end</h2>
+  <ul class="checklist">
+    <li>Explain what AI is, how the field developed, and precisely where ML sits inside it.</li>
+    <li>Describe the major approaches to building intelligent systems and why statistical learning came to dominate.</li>
+    <li>Reason about the ML core: models, parameters, loss functions, and optimization.</li>
+    <li>Prepare data, train models, evaluate them honestly, and interpret the results.</li>
+    <li>Implement Linear Regression, Logistic Regression, k-NN, Decision Trees, and k-Means <em>from scratch</em>.</li>
+    <li>Choose the right algorithm and evaluation strategy for a given problem.</li>
+    <li>Walk into your university AI/ML courses already fluent in the vocabulary and intuition.</li>
+  </ul>
+
+  <!-- ============ PART I ============ -->
+  <h2 id="part-1">Part I · The AI Landscape</h2>
+  <p>Before any algorithm, you need the map: what AI <em>is</em>, the approaches people have tried, and where Machine Learning fits.</p>
+
+  <div class="modgrid">
+    <article class="module">
+      <header>
+        <span class="mnum">M0</span>
+        <h3>Orientation — What AI Actually Is</h3>
+        <span class="mtag">Foundations</span>
+      </header>
+      <ul class="lessons">
+        <li><a href="modules/lesson-01.html"><span class="lnum">01</span><span class="ltitle">What Is Artificial Intelligence? History &amp; definitions</span><span class="badge ready">Ready</span></a></li>
+        <li><a href="modules/lesson-02.html"><span class="lnum">02</span><span class="ltitle">How Intelligent Systems Are Built — the major approaches</span><span class="badge ready">Ready</span></a></li>
+        <li><a href="modules/lesson-03.html"><span class="lnum">03</span><span class="ltitle">AI vs ML vs Deep Learning vs Data Science — the map</span><span class="badge ready">Ready</span></a></li>
+        <li><a href="modules/lesson-04.html"><span class="lnum">04</span><span class="ltitle">What Is Machine Learning? Types of learning &amp; the ML workflow</span><span class="badge ready">Ready</span></a></li>
+      </ul>
+    </article>
+  </div>
+
+  <!-- ============ PART II ============ -->
+  <h2 id="part-2">Part II · The Machine Learning Mindset</h2>
+  <p>The conceptual core that every algorithm later reuses — plus just enough tooling and math to be dangerous.</p>
+
+  <div class="modgrid">
+    <article class="module">
+      <header><span class="mnum">M1</span><h3>Learning From Data</h3><span class="mtag">Core concepts</span></header>
+      <ul class="lessons">
+        <li><a href="modules/lesson-05.html"><span class="lnum">05</span><span class="ltitle">Model, parameters, and error — the vocabulary of learning</span><span class="badge ready">Ready</span></a></li>
+        <li><a href="modules/lesson-06.html"><span class="lnum">06</span><span class="ltitle">Loss functions: measuring "how wrong" and why we minimize it</span><span class="badge ready">Ready</span></a></li>
+        <li><a href="modules/lesson-07.html"><span class="lnum">07</span><span class="ltitle">Optimization intuition — gradient descent conceptually</span><span class="badge ready">Ready</span></a></li>
+      </ul>
+    </article>
+
+    <article class="module">
+      <header><span class="mnum">M2</span><h3>Tools &amp; Just-Enough Math</h3><span class="mtag">Setup</span></header>
+      <ul class="lessons">
+        <li><a href="modules/lesson-08.html"><span class="lnum">08</span><span class="ltitle">The scientific Python stack — NumPy, Pandas, Matplotlib</span><span class="badge ready">Ready</span></a></li>
+        <li><a href="modules/lesson-09.html"><span class="lnum">09</span><span class="ltitle">The math you actually need — vectors, derivatives, probability (intuition)</span><span class="badge ready">Ready</span></a></li>
+      </ul>
+    </article>
+  </div>
+
+  <!-- ============ PART III ============ -->
+  <h2 id="part-3">Part III · Supervised Learning — Regression</h2>
+  <p>Predicting numbers. We start here because Linear Regression is the cleanest possible instance of the whole ML machine.</p>
+
+  <div class="modgrid">
+    <article class="module">
+      <header><span class="mnum">M3</span><h3>Regression</h3><span class="mtag">Supervised</span></header>
+      <ul class="lessons">
+        <li><span class="li-static"><span class="lnum">10</span><span class="ltitle">Linear Regression — the reasoning, the math, the geometry</span><span class="badge scratch">From scratch</span></span></li>
+        <li><span class="li-static"><span class="lnum">11</span><span class="ltitle">Gradient Descent in depth — and implement it in NumPy</span><span class="badge scratch">From scratch</span></span></li>
+        <li><span class="li-static"><span class="lnum">12</span><span class="ltitle">Multiple &amp; polynomial regression, feature scaling</span><span class="badge soon">Planned</span></span></li>
+        <li><span class="li-static"><span class="lnum">13</span><span class="ltitle">Overfitting, the bias–variance trade-off, regularization (Ridge/Lasso)</span><span class="badge soon">Planned</span></span></li>
+      </ul>
+    </article>
+  </div>
+
+  <!-- ============ PART IV ============ -->
+  <h2 id="part-4">Part IV · Supervised Learning — Classification</h2>
+  <p>Predicting categories. The workhorse family of classical ML — five algorithms, each teaching a different idea.</p>
+
+  <div class="modgrid">
+    <article class="module">
+      <header><span class="mnum">M4</span><h3>Classification</h3><span class="mtag">Supervised</span></header>
+      <ul class="lessons">
+        <li><span class="li-static"><span class="lnum">14</span><span class="ltitle">The classification problem &amp; Logistic Regression</span><span class="badge scratch">From scratch</span></span></li>
+        <li><span class="li-static"><span class="lnum">15</span><span class="ltitle">k-Nearest Neighbors — the laziest learner</span><span class="badge scratch">From scratch</span></span></li>
+        <li><span class="li-static"><span class="lnum">16</span><span class="ltitle">Decision Trees — learning if/else from data</span><span class="badge scratch">From scratch</span></span></li>
+        <li><span class="li-static"><span class="lnum">17</span><span class="ltitle">Naive Bayes — classification with probability</span><span class="badge soon">Planned</span></span></li>
+        <li><span class="li-static"><span class="lnum">18</span><span class="ltitle">Support Vector Machines — margins &amp; the kernel trick (intuition)</span><span class="badge soon">Planned</span></span></li>
+      </ul>
+    </article>
+  </div>
+
+  <!-- ============ PART V ============ -->
+  <h2 id="part-5">Part V · Evaluating &amp; Improving Models</h2>
+  <p>The skills that separate someone who calls <code>.fit()</code> from someone who can be trusted with a model.</p>
+
+  <div class="modgrid">
+    <article class="module">
+      <header><span class="mnum">M5</span><h3>Model Evaluation</h3><span class="mtag">Methodology</span></header>
+      <ul class="lessons">
+        <li><span class="li-static"><span class="lnum">19</span><span class="ltitle">Train/validation/test, cross-validation &amp; data leakage</span><span class="badge soon">Planned</span></span></li>
+        <li><span class="li-static"><span class="lnum">20</span><span class="ltitle">Metrics — accuracy, precision/recall, F1, ROC/AUC, regression metrics</span><span class="badge soon">Planned</span></span></li>
+        <li><span class="li-static"><span class="lnum">21</span><span class="ltitle">Hyperparameter tuning &amp; model selection</span><span class="badge soon">Planned</span></span></li>
+      </ul>
+    </article>
+  </div>
+
+  <!-- ============ PART VI ============ -->
+  <h2 id="part-6">Part VI · Ensemble Methods</h2>
+  <p>Why many weak models beat one clever model — the ideas behind the algorithms that win competitions on tabular data.</p>
+
+  <div class="modgrid">
+    <article class="module">
+      <header><span class="mnum">M6</span><h3>Ensembles</h3><span class="mtag">Supervised</span></header>
+      <ul class="lessons">
+        <li><span class="li-static"><span class="lnum">22</span><span class="ltitle">Bagging &amp; Random Forests</span><span class="badge soon">Planned</span></span></li>
+        <li><span class="li-static"><span class="lnum">23</span><span class="ltitle">Boosting — AdaBoost, Gradient Boosting, XGBoost intuition</span><span class="badge soon">Planned</span></span></li>
+      </ul>
+    </article>
+  </div>
+
+  <!-- ============ PART VII ============ -->
+  <h2 id="part-7">Part VII · Unsupervised Learning</h2>
+  <p>Finding structure when there are no labels — clustering and dimensionality reduction.</p>
+
+  <div class="modgrid">
+    <article class="module">
+      <header><span class="mnum">M7</span><h3>Unsupervised</h3><span class="mtag">No labels</span></header>
+      <ul class="lessons">
+        <li><span class="li-static"><span class="lnum">24</span><span class="ltitle">k-Means clustering</span><span class="badge scratch">From scratch</span></span></li>
+        <li><span class="li-static"><span class="lnum">25</span><span class="ltitle">Hierarchical clustering &amp; DBSCAN</span><span class="badge soon">Planned</span></span></li>
+        <li><span class="li-static"><span class="lnum">26</span><span class="ltitle">Dimensionality reduction &amp; PCA</span><span class="badge soon">Planned</span></span></li>
+      </ul>
+    </article>
+  </div>
+
+  <!-- ============ PART VIII ============ -->
+  <h2 id="part-8">Part VIII · Putting It Together</h2>
+  <p>End-to-end practice, and an honest look at the boundary where classical ML hands off to Deep Learning.</p>
+
+  <div class="modgrid">
+    <article class="module">
+      <header><span class="mnum">M8</span><h3>Practical ML &amp; Capstone</h3><span class="mtag">Integration</span></header>
+      <ul class="lessons">
+        <li><span class="li-static"><span class="lnum">27</span><span class="ltitle">Feature engineering &amp; Scikit-learn pipelines</span><span class="badge soon">Planned</span></span></li>
+        <li><span class="li-static"><span class="lnum">28</span><span class="ltitle">A full end-to-end project, start to finish</span><span class="badge soon">Planned</span></span></li>
+        <li><span class="li-static"><span class="lnum">29</span><span class="ltitle">Where classical ML ends &amp; Deep Learning begins — and how to continue</span><span class="badge soon">Planned</span></span></li>
+      </ul>
+    </article>
+  </div>
+
+  <h2 id="scope">Scope: deliberately stopping at Machine Learning</h2>
+  <p>Per your goal, this path ends at classical ML. Deep Learning, neural networks, computer vision, NLP, reinforcement learning, and generative AI/LLMs are mentioned <em>only</em> to place ML in the wider landscape (Lessons 1, 3, and 29). Your mathematical foundations are handled separately at university — here, math appears only when it clarifies an idea.</p>
+
+  <div class="callout connect">
+    <div class="callout-label">Next step</div>
+    <p>New here? Start with <a href="modules/lesson-01.html"><strong>Lesson 1 — What Is Artificial Intelligence?</strong></a>. Everything else is built on the mental map it gives you.</p>
+    <p>Already working through it? The most recent lesson is <a href="modules/lesson-09.html"><strong>Lesson 9 — The Math You Actually Need</strong></a>, which sharpens the vectors, derivatives, and probability that make the from-scratch algorithms readable. With Module 2 complete, Lesson 10 builds Linear Regression from scratch.</p>
+  </div>
+
+</main>
+
+<footer class="foot">
+  AI → Machine Learning · A progressive curriculum for a CS graduate entering an AI Master's. Built to be read in the browser, offline, no build tools.
+  <span class="byline">&copy; 2026 <a href="https://www.linkedin.com/in/adda-missoum-a534a7319/">Missoum Hadi Adda</a> &middot; Licensed <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>, code <a href="https://opensource.org/license/mit">MIT</a> &middot; <a href="https://github.com/addahadi/ai-to-ml">Source</a> &middot; Built with <a href="https://claude.com/claude-code">Claude Code</a></span>
+  <img src="https://addahadi.goatcounter.com/count?p=/" alt="" width="1" height="1">
+</footer>
+
+</body>
+</html>

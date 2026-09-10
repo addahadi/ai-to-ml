@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 2 — How Intelligent Systems Are Built</title>
+<link rel="stylesheet" href="../assets/style.css">
+<meta name="description" content="The major approaches to building intelligent systems — symbolic, statistical, and learning-based — and how they relate.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="AI → Machine Learning">
+<meta property="og:title" content="Lesson 2 — How Intelligent Systems Are Built">
+<meta property="og:description" content="The major approaches to building intelligent systems — symbolic, statistical, and learning-based — and how they relate.">
+<meta property="og:url" content="https://addahadi.github.io/ai-to-ml/modules/lesson-02.html">
+<meta name="twitter:card" content="summary">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand-mark" href="../index.html">AI<span>→</span>ML</a>
+    <nav>
+      <a href="../index.html">Roadmap</a>
+      <a href="#search">Search</a>
+      <a href="#symbolic">Symbolic AI</a>
+      <a href="#walls">The walls</a>
+      <a href="#exercises">Exercises</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="crumb"><a href="../index.html">Roadmap</a> &nbsp;›&nbsp; Part I · The AI Landscape &nbsp;›&nbsp; Module 0 · Orientation</div>
+
+  <section class="hero">
+    <span class="eyebrow">Lesson 02 · Foundations</span>
+    <h1>How Intelligent Systems Are Built</h1>
+    <p class="lead">Before Machine Learning won, the field spent forty years trying to build intelligence by hand — first as <em>search</em>, then as <em>logic and rules</em>. To understand why learning-from-data took over, you have to feel exactly where those two approaches broke.</p>
+    <div class="meta-row">
+      <span><b>Reading:</b> ~30 min</span>
+      <span><b>Prerequisites:</b> Lesson 1</span>
+      <span><b>Code:</b> none yet — one more map before the machine</span>
+    </div>
+  </section>
+
+  <div class="callout intuition">
+    <div class="callout-label">Why this lesson exists</div>
+    <p>In Lesson 1 you learned there are four broad approaches to AI (Search, Symbolic logic, Statistical learning, Bio-inspired). This lesson zooms into the first two — the "build it by hand" approaches — because <strong>understanding what Machine Learning replaced is the fastest way to understand what Machine Learning <em>is</em>.</strong> Every design choice in the rest of this course is a reaction to a wall that search or logic ran into. See the wall, and the whole ML paradigm stops looking arbitrary and starts looking inevitable.</p>
+  </div>
+
+  <h2 id="learning-goals">What this lesson delivers</h2>
+  <ul class="checklist">
+    <li>How the <strong>search &amp; planning</strong> approach frames a problem, and the exact mechanism by which it explodes.</li>
+    <li>How <strong>symbolic AI</strong> (knowledge + logic) represents and reasons — and why encoding the world by hand fails.</li>
+    <li>The two named walls — <strong>combinatorial explosion</strong> and the <strong>knowledge-acquisition bottleneck</strong> — that ended two AI eras.</li>
+    <li>Why "learn the rules from data" is the natural escape from <em>both</em> walls, not just one.</li>
+    <li>A durable mental checklist for deciding, on any new problem, whether to write rules or learn them.</li>
+  </ul>
+
+  <!-- =================================================================== -->
+  <h2 id="two-questions">1 · Two questions every builder must answer</h2>
+
+  <p>Strip away the jargon and building an intelligent system comes down to answering two questions:</p>
+
+  <div class="frame">
+    <div class="frame-row"><div class="n">Q1</div><div class="c"><b>Representation</b><span> — How do I encode the problem and what the system knows, in a form a computer can manipulate? (A game board? Logical statements? A vector of numbers?)</span></div></div>
+    <div class="frame-row"><div class="n">Q2</div><div class="c"><b>Inference</b><span> — Given that representation, how do I compute an answer or a good action? (Explore possibilities? Deduce with logic? Evaluate a learned function?)</span></div></div>
+  </div>
+
+  <p>The four approaches are really just four different pairs of answers to <em>Representation</em> and <em>Inference</em>. This lesson examines the first two pairs. Keep the two questions in mind — we'll use them again to see precisely where each approach cracks.</p>
+
+  <!-- =================================================================== -->
+  <h2 id="search">2 · The search &amp; planning approach</h2>
+
+  <p>The oldest idea in AI is beautifully simple: <strong>many problems can be framed as finding a path from where you are to where you want to be.</strong> If you can describe the situations you might be in and the moves that connect them, then "being intelligent" reduces to <em>exploring that space of possibilities</em> until you find a path to the goal.</p>
+
+  <div class="callout def">
+    <div class="callout-label">The state-space model</div>
+    <p>Formulate a problem as four things: a set of <strong>states</strong> (possible configurations of the world), a <strong>start</strong> state, a set of <strong>actions</strong> that move you from one state to another, and a <strong>goal test</strong> that recognizes when you've arrived. Solving the problem = finding a sequence of actions from start to a goal state.</p>
+  </div>
+
+  <p>This single template covers a startling range of tasks. A GPS route: states are intersections, actions are roads, the goal is your destination. A puzzle like the 8-puzzle: states are tile arrangements, actions slide a tile. A chess game: states are board positions, actions are legal moves. In each case, the "intelligence" is not knowledge about the domain — it's the systematic <em>exploration</em>.</p>
+
+  <div class="callout intuition">
+    <div class="callout-label">Representation &amp; Inference, filled in</div>
+    <p><strong>Representation:</strong> the state space (a graph of situations connected by actions). <strong>Inference:</strong> a search algorithm that walks that graph looking for a goal. That's the whole approach — and notice it needs almost no domain knowledge, just the rules of the game.</p>
+  </div>
+
+  <h3>Blind search vs informed search</h3>
+  <p>The earliest algorithms searched <em>blindly</em> — breadth-first, depth-first — trying options in a fixed order with no sense of which looked promising. They are correct but hopelessly slow on real problems. The key improvement was <strong>informed search</strong>: use a <em>heuristic</em>, a cheap estimate of "how close is this state to the goal?", to explore promising directions first.</p>
+
+  <div class="callout math">
+    <div class="callout-label">The heuristic idea (the seed of "evaluation functions")</div>
+    <p>A heuristic <span class="var">h(state)</span> estimates the remaining cost to the goal. The famous <strong>A*</strong> algorithm expands states in order of <span class="var">f = g + h</span>, where <span class="var">g</span> is the cost already paid to reach the state and <span class="var">h</span> is the estimated cost still to go. A good <span class="var">h</span> is the difference between searching a whole city and driving almost straight to the destination.</p>
+    <div class="eq">f(state) = g(state) &nbsp;+&nbsp; h(state)</div>
+    <p>Hold onto the word <em>evaluation</em>: when a chess engine scores a position, or later when a model outputs a prediction, they are descendants of this same idea — a cheap number that guides a decision.</p>
+  </div>
+
+  <h3>Where search shines — and where it stops</h3>
+  <p>Search is still the right tool whenever the rules are known, exact, and the state space is navigable: route finding, logistics scheduling, theorem proving, and game engines all lean on it today. It is precise, it can be proven correct, and it needs no training data.</p>
+
+  <div class="callout limit">
+    <div class="callout-label">The wall: combinatorial explosion</div>
+    <p>The state space grows <em>exponentially</em> with the size of the problem. Chess has roughly 10<sup>40</sup> reachable positions; Go has more than 10<sup>170</sup>. No heuristic makes brute-force exploration of such spaces tractable. And crucially, search assumes the world is <strong>clean and known</strong>: discrete states, deterministic actions, a crisp goal test. The real world — a blurry photo, an ambiguous sentence, a noisy sensor — offers none of that. Search has no idea what to do when it can't even tell which state it's in.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="symbolic">3 · The symbolic (knowledge &amp; logic) approach</h2>
+
+  <p>If search's weakness is that it has no <em>knowledge</em>, the obvious fix is to give the machine knowledge. This is the second grand approach, often called <strong>symbolic AI</strong> or <strong>GOFAI</strong> ("Good Old-Fashioned AI"): represent facts about the world as symbols and logical statements, then derive new conclusions by <em>inference</em>.</p>
+
+  <div class="callout def">
+    <div class="callout-label">Knowledge representation + reasoning</div>
+    <p>Encode what you know as explicit statements — facts and <strong>if–then rules</strong> — in a formal language (often logic). A <strong>reasoning engine</strong> then applies the rules to the facts to deduce answers the programmer never wrote down directly. The knowledge is <em>declarative</em>: you state <em>what</em> is true, not <em>how</em> to compute the answer.</p>
+  </div>
+
+  <p>The textbook illustration is a chain of deduction from a rule and a fact:</p>
+
+  <div class="eq">Rule: &nbsp; IF x is human THEN x is mortal &nbsp;&nbsp;·&nbsp;&nbsp; Fact: Socrates is human &nbsp;&nbsp;⟹&nbsp;&nbsp; Socrates is mortal</div>
+
+  <p>Scale that up and you get an <strong>expert system</strong>: hundreds or thousands of hand-written rules capturing a specialist's knowledge in a narrow domain. MYCIN (1970s) diagnosed bacterial infections this way; other systems configured computers or approved loans. For a while they genuinely worked and genuinely made money.</p>
+
+  <div class="callout intuition">
+    <div class="callout-label">Representation &amp; Inference, filled in</div>
+    <p><strong>Representation:</strong> explicit symbols, facts, and if–then rules written by humans. <strong>Inference:</strong> logical deduction (chaining rules over facts). Compare to search: search knew the rules of the <em>game</em> but nothing about the <em>domain</em>; symbolic AI is the opposite — it's stuffed with domain knowledge but that knowledge had to be poured in by hand.</p>
+  </div>
+
+  <h3>The genuine strengths</h3>
+  <ul>
+    <li><strong>Transparency.</strong> Every conclusion traces back through named rules — the system can <em>explain itself</em> ("I concluded X because rules 12 and 47 fired"). This is priceless in medicine, law, and finance.</li>
+    <li><strong>Precision with sparse data.</strong> A single correct rule handles infinitely many cases; you don't need thousands of examples to encode "a triangle has three sides."</li>
+    <li><strong>Guarantees.</strong> If the facts and rules are correct, the deductions are provably correct.</li>
+  </ul>
+
+  <div class="callout limit">
+    <div class="callout-label">The wall: the knowledge-acquisition bottleneck</div>
+    <p>Every rule must be <em>elicited from a human and hand-coded.</em> That runs into three fatal problems:</p>
+    <ul>
+      <li><strong>Tacit knowledge can't be written down.</strong> (Recall Lesson 1: you recognize a face but can't state the rule.) Whole categories of intelligence resist being turned into if–then statements at all.</li>
+      <li><strong>Brittleness.</strong> Rules cover the cases their author imagined. Feed the system a situation just outside the rulebook and it fails silently or absurdly — it has no notion of "similar to."</li>
+      <li><strong>Maintenance collapse.</strong> As rules multiply into the thousands, they interact and contradict each other. Adding rule 5,000 can break rule 12 in ways no one can trace. The system becomes unmaintainable long before it becomes complete.</li>
+    </ul>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="walls">4 · Two walls, one root cause</h2>
+
+  <p>Step back and look at the two failures side by side. They look different but share a single root cause.</p>
+
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr><th>Approach</th><th>What it needs from a human</th><th>The wall it hits</th><th>Fails on</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><b>Search &amp; planning</b></td><td>the exact rules / state space</td><td>combinatorial explosion</td><td>huge spaces; noisy, uncertain, or unknown states</td></tr>
+        <tr><td><b>Symbolic / logic</b></td><td>all the knowledge, as explicit rules</td><td>knowledge-acquisition bottleneck</td><td>tacit knowledge; novel cases; scale</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout why">
+    <div class="callout-label">The root cause (this is the whole point of the lesson)</div>
+    <p>Both approaches demand that <strong>a human specify the intelligence up front</strong> — either as the complete rules of the space, or as the complete body of knowledge. That works only when the problem is small enough and clean enough for a person to fully articulate. The messy, high-variety, tacit-knowledge-laden real world is neither. <em>The bottleneck was never the computer — it was the human in the loop, trying to write down what they cannot fully articulate and cannot exhaustively enumerate.</em></p>
+  </div>
+
+  <h3>The escape: invert the pipeline</h3>
+  <p>If the human can't write the rules, remove the human from that job. Instead of <em>programmer → rules → program</em>, do <em>data + desired outcomes → learning procedure → rules</em>. Let the machine <strong>infer</strong> the rules from examples. This is exactly the pivotal insight from Lesson 1 — and now you can see it solves <em>both</em> walls at once:</p>
+
+  <div class="frame">
+    <div class="frame-row"><div class="n">✓</div><div class="c"><b>It dissolves the knowledge bottleneck</b><span> — you no longer hand-write rules for tacit skills; you provide examples (labeled faces, labeled spam) and the rules are learned. Gathering examples is far easier than articulating rules.</span></div></div>
+    <div class="frame-row"><div class="n">✓</div><div class="c"><b>It tames the explosion</b><span> — instead of exhaustively searching or enumerating, a learned model <em>generalizes</em>: it maps even unseen, noisy inputs to good outputs, because it captured the statistical pattern rather than a lookup table.</span></div></div>
+    <div class="frame-row"><div class="n">✓</div><div class="c"><b>It embraces uncertainty</b><span> — learned models output graded, probabilistic answers, so blur, noise, and ambiguity are normal inputs rather than fatal ones.</span></div></div>
+  </div>
+
+  <div class="callout math">
+    <div class="callout-label">Connect back to Mitchell's triple</div>
+    <p>The learning approach fills in the &lt;<span class="var">T</span>, <span class="var">P</span>, <span class="var">E</span>&gt; template from Lesson 1: the task <span class="var">T</span> stays the same, but the rules now come from experience <span class="var">E</span> (data) instead of a programmer, and we tune them to maximize a performance measure <span class="var">P</span>. Where symbolic AI asked a human "what are the rules?", ML asks the data "what rules make <span class="var">P</span> as high as possible?"</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="composite">5 · Reality is a composite — don't over-learn this lesson</h2>
+
+  <p>It would be a mistake to walk away thinking "search and logic are obsolete." They aren't. The honest picture is that modern systems <strong>combine</strong> all the approaches, each where it's strongest:</p>
+
+  <ul>
+    <li>A self-driving car <em>learns</em> to perceive pedestrians (statistical learning), <em>searches</em> for a safe trajectory (planning), and obeys hand-written <em>rules</em> for hard legal constraints ("never cross a solid line").</li>
+    <li>A modern chess engine <em>searches</em> millions of positions but ranks them with a <em>learned</em> evaluation function — the two approaches fused.</li>
+    <li>Even large language models are wrapped in search-like decoding and rule-based guardrails.</li>
+  </ul>
+
+  <div class="callout connect">
+    <div class="callout-label">The builder's decision rule</div>
+    <p>On any new problem, ask: <strong>can I write the rules down completely and correctly?</strong> If yes and the space is tractable — use search or logic; they're exact, explainable, and need no data. If no — because the knowledge is tacit, the cases are too varied, or the input is noisy — then <em>learn</em> the rules from data. Most valuable modern problems fall in the second bucket, which is why this course lives there.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="limitations">6 · Limitations — what this reframing does not claim</h2>
+  <div class="callout limit">
+    <div class="callout-label">Guardrails to carry forward</div>
+    <ul>
+      <li><strong>Learning is not magic.</strong> It trades the knowledge bottleneck for a <em>data</em> bottleneck — you now need many good examples, and their quality decides everything (Lesson 1's "data quality is destiny").</li>
+      <li><strong>You lose transparency by default.</strong> Symbolic systems explained themselves; many learned models don't. Interpretability becomes something you must deliberately choose or engineer.</li>
+      <li><strong>Learned rules can be wrong in new ways.</strong> A model happily absorbs biases and spurious correlations in the data — failures symbolic systems never had.</li>
+      <li><strong>"Learn it" isn't always the answer.</strong> For small, crisp, rule-expressible problems, hand-written logic is still simpler, cheaper, and safer than training a model.</li>
+    </ul>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="connection">How this connects to the next lesson</h2>
+  <div class="callout connect">
+    <div class="callout-label">Bridge to Lesson 3</div>
+    <p>You now understand the <em>approaches</em> and why the learning approach won. But the vocabulary around it is a mess — people say "AI", "ML", "Deep Learning", and "Data Science" almost interchangeably, and they are <em>not</em> the same thing. In <strong>Lesson 3 — AI vs ML vs Deep Learning vs Data Science</strong>, we draw the precise containment map so you can place any tool, headline, or job description in its correct box. After that, Lesson 4 opens the ML machine itself and we finally start filling in the &lt;T, P, E&gt; triple with real mechanics.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="exercises">Exercises &amp; reflection</h2>
+  <p>Still no code — these sharpen the judgment you'll use constantly. A sentence or two each is enough.</p>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 1 · Rules or learning?</div>
+    <p>For each task, decide whether you'd <em>write the rules</em> (search/logic) or <em>learn them from data</em> (ML), and say which wall the other approach would hit:</p>
+    <ol>
+      <li>Validating that a credit-card number has the correct check digit.</li>
+      <li>Deciding whether a photo contains a cat.</li>
+      <li>Finding the cheapest flight itinerary between two cities.</li>
+      <li>Detecting sarcasm in a tweet.</li>
+    </ol>
+    <details><summary>Show discussion</summary>
+      <div class="details-body">
+        <p>(1) <b>Rules.</b> The check-digit algorithm is exact and tiny — learning it from data would be absurd. (2) <b>Learning.</b> "Cat" is tacit and infinitely varied; a rulebook hits the knowledge-acquisition bottleneck instantly. (3) <b>Search.</b> The rules (routes, prices, connections) are known and exact — a classic state-space search, though pruning matters to fight explosion. (4) <b>Learning.</b> Sarcasm depends on context and tone no one can enumerate as rules; symbolic AI would be hopelessly brittle.</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 2 · Name the wall</div>
+    <p>A team spends two years hand-coding a 4,000-rule expert system for medical triage. It works in demos but keeps giving dangerous advice on unusual patients, and every new rule seems to break an old one. Name the wall they hit and explain, in one sentence each, the two symptoms described.</p>
+  </div>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 3 · The composite</div>
+    <p>Pick one everyday system (a maps app, a spam filter, a smart speaker) and identify at least two of the four approaches working together inside it. This trains the "intelligence is a composite" instinct you'll need all course.</p>
+  </div>
+
+  <div class="callout intuition">
+    <div class="callout-label">One-paragraph summary to lock it in</div>
+    <p>Intelligent systems are built by answering two questions — how to <em>represent</em> the problem and how to <em>infer</em> an answer. The first two historical answers were <em>search</em> (explore a space of states with heuristics) and <em>symbolic logic</em> (deduce over hand-written rules). Both demand that a human specify the intelligence up front, so both hit walls: search explodes combinatorially and drowns in noise, while logic chokes on the knowledge-acquisition bottleneck. Machine Learning escapes both by inverting the pipeline — inferring the rules from data instead of from a person — which is exactly why it became the dominant approach and the subject of this course.</p>
+  </div>
+
+  <nav class="lessonnav">
+    <a class="prev" href="lesson-01.html">
+      <span class="dir">← Previous</span>
+      <span class="ttl">Lesson 1 · What Is Artificial Intelligence?</span>
+    </a>
+    <a class="next" href="lesson-03.html">
+      <span class="dir">Next →</span>
+      <span class="ttl">Lesson 3 · AI vs ML vs Deep Learning vs Data Science</span>
+    </a>
+  </nav>
+
+</main>
+
+<footer class="foot">
+  Lesson 2 of 29 · AI → Machine Learning · Understand the <em>why</em> before the <em>how</em>.
+  <span class="byline">&copy; 2026 <a href="https://www.linkedin.com/in/adda-missoum-a534a7319/">Missoum Hadi Adda</a> &middot; Licensed <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>, code <a href="https://opensource.org/license/mit">MIT</a> &middot; <a href="https://github.com/addahadi/ai-to-ml">Source</a> &middot; Built with <a href="https://claude.com/claude-code">Claude Code</a></span>
+  <img src="https://addahadi.goatcounter.com/count?p=/modules/lesson-02.html" alt="" width="1" height="1">
+</footer>
+
+</body>
+</html>

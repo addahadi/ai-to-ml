@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 6 — Loss Functions</title>
+<link rel="stylesheet" href="../assets/style.css">
+<meta name="description" content="Loss functions: how we measure how wrong a model is, and why learning means minimizing that number.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="AI → Machine Learning">
+<meta property="og:title" content="Lesson 6 — Loss Functions">
+<meta property="og:description" content="Loss functions: how we measure how wrong a model is, and why learning means minimizing that number.">
+<meta property="og:url" content="https://addahadi.github.io/ai-to-ml/modules/lesson-06.html">
+<meta name="twitter:card" content="summary">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand-mark" href="../index.html">AI<span>→</span>ML</a>
+    <nav>
+      <a href="../index.html">Roadmap</a>
+      <a href="#vocab">Vocabulary</a>
+      <a href="#contract">The contract</a>
+      <a href="#regression">Regression</a>
+      <a href="#classification">Classification</a>
+      <a href="#exercises">Exercises</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="crumb"><a href="../index.html">Roadmap</a> &nbsp;›&nbsp; Part II · The Machine Learning Mindset &nbsp;›&nbsp; Module 1 · Learning From Data</div>
+
+  <section class="hero">
+    <span class="eyebrow">Lesson 06 · Core concepts</span>
+    <h1>Loss Functions: Measuring "How Wrong," and Why We Minimize It</h1>
+    <p class="lead">Lesson 5 used squared error as a stand-in for "how wrong" and moved on. That was a placeholder. The loss function is the single most consequential choice in a learning system, because it is the only thing that tells training what "better" means. Change the loss and you change the model you get — from the same data, the same shape, and the same optimizer.</p>
+    <div class="meta-row">
+      <span><b>Reading:</b> ~35 min</span>
+      <span><b>Prerequisites:</b> Lesson 5</span>
+      <span><b>Code:</b> pseudocode + hand-worked numbers</span>
+    </div>
+  </section>
+
+  <div class="callout why">
+    <div class="callout-label">Why the loss is the most important line of code you write</div>
+    <p>An optimizer is obedient and literal. It does not know about houses, patients, or fraud; it knows one number and it makes that number small. So whatever you put in that number <em>becomes</em> the model's definition of success — including the parts you didn't mean. Write a loss that punishes big misses hardest, and you get a model that sacrifices typical accuracy to appease outliers. Write a loss that treats every mistake as equal, and you get a model indifferent to the one mistake that would cost you your job. <strong>The loss function is where your intent gets translated into arithmetic, and it is the only place that translation happens.</strong> Everything downstream is machinery faithfully serving whatever you wrote here.</p>
+  </div>
+
+  <div class="callout intuition">
+    <div class="callout-label">The same house data, one column stranger than before</div>
+    <p>We keep predicting house prices, but this lesson needs a dataset with an <em>awkward</em> row in it, because that's where loss functions start disagreeing with each other. Five houses, prices in thousands of euros:</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>House</th><th>Size (m²)</th><th>Sale price (k€)</th><th>Note</th></tr></thead>
+        <tbody>
+          <tr><td>A</td><td>60</td><td>180</td><td>ordinary flat</td></tr>
+          <tr><td>B</td><td>85</td><td>200</td><td>ordinary flat</td></tr>
+          <tr><td>C</td><td>95</td><td>210</td><td>ordinary flat</td></tr>
+          <tr><td>D</td><td>100</td><td>220</td><td>ordinary flat</td></tr>
+          <tr><td>E</td><td>110</td><td>900</td><td>penthouse — or a typo</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>House E is the interesting one. Four houses live between 180 and 220; one sits at 900. Whether E is a genuine luxury sale or a data-entry mistake, <em>your choice of loss decides how much attention the model pays to it</em>. We'll watch that happen with real arithmetic.</p>
+  </div>
+
+  <h2 id="learning-goals">What this lesson delivers</h2>
+  <ul class="checklist">
+    <li>Exact vocabulary: <em>loss</em> (one example), <em>cost</em> (whole dataset), <em>objective</em> (what we minimize) — and why people blur them.</li>
+    <li>The four-part contract a function must satisfy to be usable as a loss.</li>
+    <li>The standard regression losses — MSE, MAE, Huber — and a worked case where MSE and MAE pick <em>different</em> best models from identical data.</li>
+    <li>Why accuracy cannot be a loss function, and what log loss (cross-entropy) does instead.</li>
+    <li>How to read a loss as a statement of values: outliers, asymmetric costs, imbalanced classes.</li>
+  </ul>
+
+  <!-- =================================================================== -->
+  <h2 id="vocab">1 · Loss, cost, objective — getting the words straight</h2>
+
+  <p>Three words circulate for closely related ideas, and papers use them loosely. The distinction that actually matters is <strong>one example versus all examples</strong>.</p>
+
+  <div class="callout def">
+    <div class="callout-label">Loss (per example)</div>
+    <div class="eq">L(<span class="var">y</span>, <span class="var">ŷ</span>) &nbsp;=&nbsp; the penalty for one prediction</div>
+    <p>Takes a single true value and a single prediction, returns one non-negative number. For house A alone: how bad was that one guess? Squared error, absolute error, and log loss are all per-example losses.</p>
+  </div>
+
+  <div class="callout def">
+    <div class="callout-label">Cost (whole dataset) — the thing we actually minimize</div>
+    <div class="eq">J(<span class="var">θ</span>) &nbsp;=&nbsp; (1 / n) · Σ L(<span class="var">yᵢ</span>, <span class="var">f(xᵢ ; θ)</span>)</div>
+    <p>Average the per-example loss over all <span class="var">n</span> examples. Notice what the notation says: the data is fixed, so <strong>J depends only on <span class="var">θ</span></strong> — the parameters. This is precisely the "error is a function of the parameters" move from Lesson 5, now written properly. J is the <em>height</em> on the error landscape.</p>
+  </div>
+
+  <div class="callout limit">
+    <div class="callout-label">Honest note on terminology</div>
+    <p>In practice almost everyone says "loss function" for both, and "the loss" for the dataset-wide number you watch during training. Scikit-learn, textbooks, and library docs all mix them. You will not be misunderstood if you follow the crowd — but keep the two levels straight in your head, because <em>per-example</em> is where the design decisions live and <em>dataset-wide</em> is what the optimizer sees. The word <strong>objective function</strong> is the widest term: the thing being minimized, which is usually the cost plus extras such as a regularization penalty (Lesson 13).</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="contract">2 · The contract: what makes a function usable as a loss</h2>
+
+  <p>You cannot pick any formula you like. A loss has a job to do inside a training loop, and that job imposes four requirements. Three are about being meaningful; the fourth is about being <em>optimizable</em>, and it's the one beginners never anticipate.</p>
+
+  <div class="frame">
+    <div class="frame-row"><div class="n">1</div><div class="c"><b>Lower must mean better</b><span> — the convention is minimization, so the loss must <em>increase</em> as predictions get worse. If you have a score where higher is better (accuracy, R², reward), you negate it or subtract it from a constant to turn it into a loss. Nothing deep here, but the sign convention is universal: training always walks <em>down</em>.</span></div></div>
+    <div class="frame-row"><div class="n">2</div><div class="c"><b>Perfect predictions must sit at the minimum</b><span> — when <span class="var">ŷ = y</span> for every example, the loss should be at its lowest possible value (usually zero). A "loss" whose minimum is achieved by some <em>other</em> prediction is a bug: the optimizer will faithfully walk to that other place instead of to the truth.</span></div></div>
+    <div class="frame-row"><div class="n">3</div><div class="c"><b>It must be blind to the direction of the mistake — unless you intend otherwise</b><span> — over-predicting by 20k and under-predicting by 20k must both count as costs, or they cancel and a badly-wrong model scores perfectly (the reason we can't just sum raw residuals). Squaring and absolute value both achieve this. Deliberately <em>asymmetric</em> losses exist and are useful, but that must be a choice, not an accident.</span></div></div>
+    <div class="frame-row"><div class="n">4</div><div class="c"><b>It should be smooth in the parameters</b><span> — the optimizer (Lesson 7) works by asking "if I nudge <span class="var">w</span> slightly, does the loss go up or down?" For that question to have an answer, the loss must respond to small nudges with small changes, and it must have a well-defined slope. This single requirement disqualifies some of the most natural-sounding error measures, as we'll see with accuracy.</span></div></div>
+  </div>
+
+  <div class="callout math">
+    <div class="callout-label">Requirement 4 is the one that surprises people</div>
+    <p>Here is the shape of the problem. The optimizer only ever learns about the loss <em>locally</em> — it feels the slope under its feet and steps downhill. A loss that is flat over wide regions gives slope zero: no information, no direction, no step. A loss that jumps abruptly has no slope at all at the jump. So a measure can be a perfectly good <strong>report card</strong> for humans and still be a useless <strong>training signal</strong>. That gap — between what we want to evaluate and what we can optimize — is why the loss you train on and the metric you report are often two different functions. Hold that thought; it explains half of the practical decisions in Part V.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="regression">3 · Regression losses — and a genuine disagreement</h2>
+
+  <p>Regression predicts a number, so the residual <span class="var">y − ŷ</span> is available directly and the only question is how to price it. The two classics differ in one detail — square or absolute value — and that detail changes the model you get.</p>
+
+  <div class="callout def">
+    <div class="callout-label">Mean Squared Error (MSE) and Mean Absolute Error (MAE)</div>
+    <div class="eq">MSE = (1 / n) · Σ (<span class="var">yᵢ</span> − <span class="var">ŷᵢ</span>)² &nbsp;&nbsp;&nbsp;&nbsp; MAE = (1 / n) · Σ |<span class="var">yᵢ</span> − <span class="var">ŷᵢ</span>|</div>
+    <p>Both satisfy the contract: non-negative, zero when perfect, sign-blind. MSE prices a mistake by its <em>square</em>, so a 100k miss costs 100 times a 10k miss. MAE prices it linearly, so a 100k miss costs exactly 10 times a 10k miss. That's the whole difference, and it is not a small one.</p>
+  </div>
+
+  <div class="callout practice">
+    <div class="callout-label">Worked example: two losses, two different "best" answers</div>
+    <p>Strip the problem to its bones. Use the simplest model that exists — <strong>one parameter, no features</strong>: predict the same constant <span class="var">c</span> for every house. (<span class="var">ŷ = c</span>. It's a legitimate model family; every value of <span class="var">c</span> is a member.) The question: which <span class="var">c</span> is best for our five prices — 180, 200, 210, 220, 900?</p>
+    <p>Two candidates suggest themselves: the <strong>mean</strong> (342) and the <strong>median</strong> (210). Score both under both losses, in k€:</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Candidate <span class="var">c</span></th><th>Residuals (y − c)</th><th>MSE</th><th>RMSE</th><th>MAE</th></tr></thead>
+        <tbody>
+          <tr><td><b>342</b> (mean)</td><td>−162, −142, −132, −122, +558</td><td>78,016</td><td><b>≈ 279</b></td><td>223.2</td></tr>
+          <tr><td><b>210</b> (median)</td><td>−30, −10, 0, +10, +690</td><td>95,440</td><td>≈ 309</td><td><b>148.0</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Read the bold entries. <strong>MSE prefers 342. MAE prefers 210.</strong> Same data, same model family, same optimizer — and the two losses hand you different models. This is not a rounding artifact or a quirk of these five numbers; it is a theorem: the constant minimizing squared error is always the <em>mean</em>, and the constant minimizing absolute error is always the <em>median</em>.</p>
+  </div>
+
+  <div class="callout why">
+    <div class="callout-label">Which answer is right? Ask what you want the model to do</div>
+    <p>Look at what 342 means as a prediction: it is <em>above four of the five houses</em>. If someone asks "what does a flat here cost?", answering "342k" is wrong for 80% of the market — MSE bought that by chasing the penthouse, because the squared penalty for missing a 900k house by 558 is so enormous that dragging the prediction up is worth ruining the other four. The median answer, 210k, describes four houses well and is badly wrong about one.</p>
+    <p>Neither is objectively correct. <strong>The right choice depends on what a mistake costs you.</strong> If you're a bank whose exposure grows with the square of the error, MSE's caution about the huge miss is exactly right. If you're publishing a typical-price estimate, MAE's answer is the honest one. What you cannot do is stay neutral — you pick a loss, and by picking it you have answered the question whether you meant to or not.</p>
+  </div>
+
+  <div class="callout intuition">
+    <div class="callout-label">The one-sentence summary of outlier behavior</div>
+    <p><strong>Squaring makes the loss <em>sensitive</em> to outliers; absolute value makes it <em>robust</em> to them.</strong> "Sensitive" and "robust" are the technical terms and neither is a compliment or an insult — a genuine 900k penthouse is signal worth chasing, and a mistyped 900k is noise worth ignoring. The loss cannot tell those apart. Only you can, which is why "look at your data before choosing your loss" is real advice rather than a platitude.</p>
+  </div>
+
+  <h3>Huber loss — refusing to choose</h3>
+
+  <div class="callout def">
+    <div class="callout-label">Huber loss</div>
+    <div class="eq">L = ½(<span class="var">y</span> − <span class="var">ŷ</span>)² &nbsp;if |<span class="var">y</span> − <span class="var">ŷ</span>| ≤ <span class="var">δ</span> &nbsp;&nbsp;·&nbsp;&nbsp; <span class="var">δ</span>·(|<span class="var">y</span> − <span class="var">ŷ</span>| − ½<span class="var">δ</span>) &nbsp;otherwise</div>
+    <p>In words: <em>behave like MSE for small errors, like MAE for large ones.</em> Inside a band of width <span class="var">δ</span> around the truth it squares (smooth, well-behaved gradients near the answer); beyond that band it goes linear, so a wild outlier contributes a bounded pull instead of dominating. The two pieces are built to meet with matching slope, so the result is smooth enough to optimize.</p>
+  </div>
+
+  <div class="callout practice">
+    <div class="callout-label">Where does δ come from? You choose it.</div>
+    <p><span class="var">δ</span> is the threshold that declares "errors bigger than this are probably outliers, stop chasing them." Training does not learn it — you set it before training. By the Lesson 5 test (<em>does the training procedure change this number by looking at the data?</em> No), <span class="var">δ</span> is a <strong>hyperparameter</strong>. With our house data, <span class="var">δ</span> = 50 would treat the four ordinary flats quadratically and the penthouse's 690 miss linearly. Getting <span class="var">δ</span> right needs the same tuning machinery as any hyperparameter (Lesson 21) — which is the honest cost of Huber's flexibility.</p>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Loss</th><th>Penalty grows</th><th>Outliers</th><th>Optimal constant</th><th>Smooth everywhere?</th><th>Reach for it when</th></tr></thead>
+      <tbody>
+        <tr><td><b>MSE</b> / L2</td><td>quadratically</td><td>dominate</td><td>mean</td><td>yes</td><td>big errors are genuinely disproportionately costly; data is clean</td></tr>
+        <tr><td><b>MAE</b> / L1</td><td>linearly</td><td>bounded influence</td><td>median</td><td>no — kink at zero error</td><td>outliers or bad rows are present; you want typical-case accuracy</td></tr>
+        <tr><td><b>Huber</b></td><td>quadratic then linear</td><td>bounded influence</td><td>between the two</td><td>yes (by construction)</td><td>you want MAE's robustness without MAE's kink; you can afford to tune <span class="var">δ</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout math">
+    <div class="callout-label">Optional depth: why MSE is the <em>default</em>, not merely a habit</div>
+    <p>Three reasons stack up. <strong>Smoothness</strong> — the squared function has a clean slope everywhere, including at zero error, whereas |·| has a corner there that optimizers must special-case. <strong>Closed form</strong> — with a linear model, minimizing MSE has an exact algebraic solution (you can solve for the best <span class="var">w, b</span> directly, no iteration), and the landscape is that single friendly bowl from Lesson 5. <strong>A probabilistic justification</strong> — if you assume the noise around the true line is Gaussian, then the parameters that make the observed data most likely are exactly the ones that minimize squared error. MSE isn't an arbitrary pick; it's the answer to a specific, and often reasonable, assumption about how the world is noisy. When that assumption is wrong — heavy tails, corrupted rows — MSE's optimality goes with it.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="classification">4 · Classification losses — and why accuracy is disqualified</h2>
+
+  <p>Now switch tasks. Predict a category, not a number: <em>will this house sell within 30 days?</em> Yes or no. The obvious way to score a classifier is <strong>accuracy</strong> — the fraction it gets right. It is the right thing to <em>report</em> and it cannot be used to <em>train</em>. Understanding why is one of the most clarifying things in this module.</p>
+
+  <div class="callout why">
+    <div class="callout-label">Why we cannot minimize "number of mistakes"</div>
+    <p>Suppose the model outputs a score and you predict "yes" when it exceeds a threshold. Now nudge <span class="var">w</span> by a hair. Almost certainly, <em>no prediction flips</em> — every house stays on the side of the threshold it was already on — so the mistake count is <strong>exactly unchanged</strong>. The loss is flat: slope zero, no direction to step. Keep nudging and eventually one house crosses over, and the count jumps by a whole unit, instantly. So the accuracy landscape is a <strong>staircase</strong>: flat plateaus where the gradient is zero and tells you nothing, separated by cliffs where the slope is undefined.</p>
+    <p>That violates requirement 4 outright. An optimizer dropped on a staircase has no idea which way to walk. (This measure has a name — <strong>0–1 loss</strong>, one unit per mistake — and minimizing it directly is computationally intractable for most models.) We need a loss that is sensitive to small parameter nudges, which means a loss that cares not just <em>whether</em> the model was right but <strong>how confidently</strong>.</p>
+  </div>
+
+  <p>The fix: have the model output a <strong>probability</strong> <span class="var">p</span> between 0 and 1 rather than a hard yes/no, then penalize it by how much probability it assigned to the truth. Small nudges to <span class="var">w</span> now move <span class="var">p</span> slightly, which moves the loss slightly. Smooth landscape, usable gradient.</p>
+
+  <div class="callout def">
+    <div class="callout-label">Log loss (binary cross-entropy)</div>
+    <div class="eq">L = −[ <span class="var">y</span>·log(<span class="var">p</span>) &nbsp;+&nbsp; (1 − <span class="var">y</span>)·log(1 − <span class="var">p</span>) ]</div>
+    <p>Labels are <span class="var">y</span> = 1 or 0, and <span class="var">p</span> is the probability the model assigned to class 1. The bracket is a switch: when <span class="var">y</span> = 1 the second term vanishes and the loss is <span class="var">−log(p)</span>; when <span class="var">y</span> = 0 the first vanishes and it's <span class="var">−log(1 − p)</span>. Either way, <strong>it's the negative log of the probability the model gave to the correct answer</strong> — which is the whole idea, and the notation is just a way to write it without an if-statement.</p>
+  </div>
+
+  <div class="callout practice">
+    <div class="callout-label">Worked example: feel the penalty curve</div>
+    <p>Take a house that <em>did</em> sell quickly (<span class="var">y</span> = 1) and score several possible model outputs (natural log):</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Model says p(sells) =</th><th>Verdict</th><th>Loss = −log(p)</th></tr></thead>
+        <tbody>
+          <tr><td>0.99</td><td>confident and right</td><td>0.01</td></tr>
+          <tr><td>0.90</td><td>right</td><td>0.11</td></tr>
+          <tr><td>0.60</td><td>right but unsure</td><td>0.51</td></tr>
+          <tr><td>0.50</td><td>no opinion</td><td>0.69</td></tr>
+          <tr><td>0.10</td><td>wrong</td><td>2.30</td></tr>
+          <tr><td>0.01</td><td>confidently wrong</td><td>4.61</td></tr>
+          <tr><td>0.001</td><td>certain and wrong</td><td>6.91</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Two properties to notice. The penalty is <strong>continuous</strong> — every small change in <span class="var">p</span> changes the loss, which is exactly the training signal accuracy couldn't provide. And it is <strong>brutally asymmetric toward confident errors</strong>: being sure and wrong (p = 0.01) costs about 40× being right with p = 0.90. As <span class="var">p</span> → 0 with <span class="var">y</span> = 1 the loss heads to infinity. Log loss doesn't just want correct answers; it wants <em>honestly calibrated</em> ones, and it punishes bluffing without mercy.</p>
+  </div>
+
+  <div class="callout practice">
+    <div class="callout-label">Worked example: identical accuracy, very different loss</div>
+    <p>Four houses, all of which sold quickly (<span class="var">y</span> = 1 for all four). Two models, both predicting "yes" whenever <span class="var">p</span> &gt; 0.5:</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Model</th><th>Predicted probabilities</th><th>Accuracy</th><th>Mean log loss</th></tr></thead>
+        <tbody>
+          <tr><td><b>A</b> — timid</td><td>0.60, 0.60, 0.60, 0.60</td><td>4/4 = 100%</td><td>0.51</td></tr>
+          <tr><td><b>B</b> — informative</td><td>0.99, 0.99, 0.99, 0.51</td><td>4/4 = 100%</td><td><b>0.18</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Accuracy cannot tell these apart — both are flawless. Log loss says B is roughly three times better, and it's right to: B tells you three of these are near-certainties and one is a coin flip, which is <em>actionable information</em>. A just shrugs "probably" four times. This is the second reason log loss earns its place: beyond being optimizable, it grades the quality of the model's uncertainty, which a hard yes/no score throws away.</p>
+  </div>
+
+  <div class="callout intuition">
+    <div class="callout-label">Hinge loss, in one paragraph</div>
+    <p>Log loss is not the only smooth-enough classification loss. <strong>Hinge loss</strong> takes a different stance: it wants every example on the correct side of the boundary <em>by a comfortable margin</em>, and once an example is safely past that margin it stops caring entirely — that example's loss is exactly zero and it exerts no further pull. Only the borderline cases shape the boundary. That "only the difficult points matter" behavior is the engine of Support Vector Machines, so we'll leave the details to Lesson 18. Mentioning it now makes a structural point: <em>the loss is a slot</em>, and swapping what goes in it gives you a recognizably different algorithm from the same ingredients.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="choice">5 · The loss as a statement of values</h2>
+
+  <p>Everything so far points one direction: the loss is where you tell the system what to care about. Three situations where the default is quietly the wrong answer.</p>
+
+  <div class="frame">
+    <div class="frame-row"><div class="n">1</div><div class="c"><b>When the two mistakes cost differently</b><span> — MSE and log loss both treat over- and under-prediction as equally bad. Real problems often don't. Under-stocking inventory loses a sale; over-stocking ties up capital — rarely the same amount. Missing a disease in a screening test is catastrophic; a false alarm means one more test. The tool is a <strong>deliberately asymmetric loss</strong>: weight the direction you fear more heavily. Doing nothing is also a choice — the choice that both errors are equal.</span></div></div>
+    <div class="frame-row"><div class="n">2</div><div class="c"><b>When one class is rare</b><span> — if 1% of transactions are fraud, a model predicting "never fraud" scores 99% accuracy and is worthless. Under an unweighted loss the 99 honest transactions simply outvote the 1 fraud case in the average. The standard fix is <strong>class weighting</strong>: multiply the rare class's loss so a fraud mistake costs, say, 99 times an honest-transaction mistake. You're editing the loss to restore the balance that the data's shape destroyed. More in Lesson 20.</span></div></div>
+    <div class="frame-row"><div class="n">3</div><div class="c"><b>When the loss you train on can't be the metric you report</b><span> — you'll train with log loss and report precision, recall, and F1 (Lesson 20); you'll train with MSE and report RMSE in euros because euros-squared means nothing to a stakeholder. This is normal and not a contradiction: the <strong>loss must be optimizable</strong>, the <strong>metric must be interpretable</strong>, and few functions are excellent at both. Just never confuse them — the loss is what the model is actually pursuing, whatever your dashboard displays.</span></div></div>
+  </div>
+
+  <p>Structurally, all of this fits into the training loop as a single swappable component:</p>
+
+  <p class="code-cap">the loss is a plug-in — one line decides what "better" means</p>
+  <pre><code><span class="tok-c"># Per-example losses: interchangeable, same signature</span>
+<span class="tok-k">def</span> mse_loss(y, y_hat): <span class="tok-k">return</span> mean((y - y_hat) ** <span class="tok-n">2</span>)
+<span class="tok-k">def</span> mae_loss(y, y_hat): <span class="tok-k">return</span> mean(abs(y - y_hat))
+<span class="tok-k">def</span> log_loss(y, p):     <span class="tok-k">return</span> -mean(y * log(p) + (<span class="tok-n">1</span> - y) * log(<span class="tok-n">1</span> - p))
+
+loss = mse_loss                        <span class="tok-c"># &lt;-- change THIS and you change the model</span>
+
+theta = init_parameters()
+<span class="tok-k">for</span> step <span class="tok-k">in</span> range(num_steps):
+    y_hat = model(X, theta)            <span class="tok-c"># the MODEL predicts        (Lesson 5)</span>
+    J     = loss(y, y_hat)             <span class="tok-c"># the COST: our height      (this lesson)</span>
+    grad  = slope_of(J, theta)         <span class="tok-c"># which way is downhill     (Lesson 7)</span>
+    theta = step_downhill(theta, grad) <span class="tok-c"># adjust the PARAMETERS     (Lesson 5)</span></code></pre>
+
+  <p>Nothing else in the loop knows or cares which loss you chose — and that's the point worth sitting with. <code>model</code>, <code>slope_of</code>, and <code>step_downhill</code> are unchanged, yet swapping <code>mse_loss</code> for <code>mae_loss</code> gave us 342 instead of 210 earlier. The loss is a small, isolated, and enormously consequential line.</p>
+
+  <!-- =================================================================== -->
+  <h2 id="limitations">6 · Limitations — what to keep honest about</h2>
+  <div class="callout limit">
+    <div class="callout-label">Guardrails to carry forward</div>
+    <ul>
+      <li><strong>A low loss is not a good model.</strong> The loss is measured on the data you trained on, and a flexible enough model can drive it toward zero by memorizing. Low training loss with high unseen error is overfitting (Lesson 13) — the loss cannot detect this, because it never looks at unseen data.</li>
+      <li><strong>Loss values are not comparable across losses or datasets.</strong> "My loss is 0.4" means nothing without knowing which loss, in what units, on what data. MSE scales with the square of your target's units — measure prices in euros instead of thousands and your MSE grows a millionfold with no change in model quality. Only compare like with like.</li>
+      <li><strong>The loss encodes your assumptions whether you thought about them or not.</strong> Choosing MSE asserts that big errors are disproportionately costly and your data is clean. Choosing an unweighted loss asserts every example matters equally. Defaults are assertions too — silent ones.</li>
+      <li><strong>Smoothness is a constraint, not a virtue.</strong> We use log loss partly because 0–1 loss is unoptimizable, which means we are minimizing a <em>surrogate</em> for what we actually want. Usually the surrogate's minimum is close enough to the real goal. Not always — this gap is where "the model has great log loss but bad recall" comes from.</li>
+      <li><strong>No loss can distinguish signal from corruption.</strong> Our 900k house might be a genuine penthouse or a typo. MSE chases it, MAE ignores it, and neither is exercising judgment — they're applying arithmetic. Data inspection is your job, not the loss function's.</li>
+    </ul>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="connection">How this connects to the next lesson</h2>
+  <div class="callout connect">
+    <div class="callout-label">Bridge to Lesson 7 — Optimization intuition</div>
+    <p>The <code>E</code> box from Lesson 5 is now exact. You know what a loss must satisfy to be usable, you have the standard choices for regression and classification, and you've seen with your own arithmetic that the choice changes the answer. The landscape from Lesson 5 finally has a precise definition: <strong>the loss is what defines the height at every point in parameter space.</strong></p>
+    <p>Which leaves exactly one slot in the loop — <code>slope_of</code> and <code>step_downhill</code>. We have a well-defined surface and no method for descending it. <strong>Lesson 7 — Optimization intuition</strong> supplies that method: what a gradient is (intuitively — the direction of steepest increase), why stepping against it reduces the loss, what the learning rate controls and how it fails in both directions, and when the walk gets stuck. After Lesson 7 the template is complete, and Lesson 10 builds the first real algorithm on it.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="exercises">Exercises &amp; reflection</h2>
+  <p>Pen and paper again. Exercise 2's arithmetic in particular is worth doing by hand — the numbers are the argument.</p>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 1 · Choose the loss, and justify it</div>
+    <p>Pick a loss for each scenario and say in one sentence why:</p>
+    <ol>
+      <li>Predicting a house's price from a public dataset you know contains data-entry errors.</li>
+      <li>Predicting whether a loan will default, where the bank needs a usable probability, not just a yes/no.</li>
+      <li>Predicting daily bakery demand, where under-baking loses a customer permanently and over-baking wastes flour.</li>
+      <li>Predicting delivery time, where being 60 minutes late is far worse than six times being 10 minutes late.</li>
+    </ol>
+    <details><summary>Show discussion</summary>
+      <div class="details-body">
+        <p>(1) <strong>MAE or Huber.</strong> Known-corrupt rows are exactly the case where MSE's squaring lets bad data steer the model; robustness is worth more than smoothness here. (2) <strong>Log loss.</strong> It requires and rewards calibrated probabilities — the bank needs to distinguish a 5% default risk from a 40% one, which a hard label discards. (3) <strong>An asymmetric loss</strong> weighted so under-prediction costs more; the two mistakes have genuinely different business costs, so a symmetric loss would misrepresent the problem. (4) <strong>MSE.</strong> This is the case its critics forget — when large errors really are disproportionately costly, quadratic growth is a feature, not a bug. Note that (1) and (4) are the <em>same task</em> with opposite answers: the loss follows the cost structure, never the task type.</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 2 · Watch the outlier move the answer</div>
+    <p>Take our five prices (180, 200, 210, 220, 900) and <strong>remove house E</strong>. For the remaining four, compute the mean and the median. Then state, without further arithmetic, what constant MSE would choose and what constant MAE would choose — and compare the gap between them to the 342-vs-210 gap we found with E included. What does that tell you about which loss "notices" the penthouse?</p>
+    <details><summary>Show solution</summary>
+      <div class="details-body">
+        <p>Four prices 180, 200, 210, 220: mean = 810/4 = <strong>202.5</strong>; median = (200+210)/2 = <strong>205</strong>. So MSE would choose 202.5 and MAE 205 — a gap of 2.5, versus a gap of 132 with the penthouse included. Nearly all of that 132 came from MSE alone: MAE's answer barely budged (205 → 210) when E was added, while MSE's leapt (202.5 → 342). That's what "sensitive" versus "robust" means quantitatively, and it's the sharpest way to see the difference: <em>on clean data the two losses roughly agree, and they diverge precisely to the extent your data has extremes in it.</em></p>
+      </div>
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 3 · Log loss by hand</div>
+    <p>Three houses with true labels <span class="var">y</span> = 1, 0, 1 (sold fast / didn't / sold fast). The model outputs <span class="var">p</span> = 0.8, 0.3, 0.2. Compute each per-example log loss and the mean. Useful values: −log(0.8) ≈ 0.22, −log(0.7) ≈ 0.36, −log(0.2) ≈ 1.61. Then answer: at a 0.5 threshold, what is the accuracy — and does it capture the same thing the loss does?</p>
+    <details><summary>Show solution</summary>
+      <div class="details-body">
+        <p>House 1 (<span class="var">y</span>=1, <span class="var">p</span>=0.8): loss = −log(0.8) ≈ 0.22. House 2 (<span class="var">y</span>=0, <span class="var">p</span>=0.3): the correct class is 0, whose probability is 1 − 0.3 = 0.7, so loss = −log(0.7) ≈ 0.36. House 3 (<span class="var">y</span>=1, <span class="var">p</span>=0.2): loss = −log(0.2) ≈ 1.61. Mean ≈ (0.22 + 0.36 + 1.61)/3 ≈ <strong>0.73</strong>. Accuracy: predictions at a 0.5 threshold are 1, 0, 0 versus truth 1, 0, 1 → 2/3 ≈ 67%. The two disagree in character: accuracy records one mistake and stops there, while the loss shows that mistake was a <em>fairly confident</em> one (1.61 dwarfs the two correct examples combined) and that house 2 was correct but hesitant. Same predictions, strictly more information.</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 4 · Explain the staircase</div>
+    <p>In three or four sentences, explain to a fellow engineer why "minimize the number of misclassified examples" cannot be used to train a model, and what log loss changes about the situation. Use the words <em>flat</em>, <em>slope</em>, and <em>confidence</em>. Then say what accuracy <em>is</em> still good for.</p>
+  </div>
+
+  <div class="callout intuition">
+    <div class="callout-label">One-paragraph summary to lock it in</div>
+    <p>A <strong>loss function</strong> prices a single prediction's mistake; averaging it over the dataset gives the <strong>cost</strong> <span class="var">J(θ)</span>, which — because the data is fixed — is a function of the parameters alone and therefore <em>is</em> the height of the Lesson 5 landscape. To be usable a loss must satisfy four conditions: lower means better, perfection sits at the minimum, direction-blind unless deliberately not, and smooth in the parameters. For regression, <strong>MSE</strong> squares residuals (sensitive to outliers, optimal constant = the mean, smooth and closed-form), <strong>MAE</strong> takes absolute values (robust, optimal constant = the median), and <strong>Huber</strong> interpolates via a hyperparameter <span class="var">δ</span> — and on our five houses MSE and MAE genuinely disagreed, 342 versus 210, proving the choice is substantive rather than cosmetic. For classification, counting mistakes gives a staircase whose gradient is zero on the plateaus and undefined at the cliffs, so it cannot be optimized; instead we predict probabilities and use <strong>log loss</strong>, which is smooth, punishes confident errors savagely, and grades calibration that accuracy ignores entirely. The loss is where your priorities get encoded — asymmetric costs, rare classes, what counts as a bad day — and the defaults encode priorities too, just silently. Lesson 7 takes this well-defined surface and finally teaches us how to walk down it.</p>
+  </div>
+
+  <nav class="lessonnav">
+    <a class="prev" href="lesson-05.html">
+      <span class="dir">← Previous</span>
+      <span class="ttl">Lesson 5 · Model, Parameters, and Error</span>
+    </a>
+    <a class="next" href="lesson-07.html">
+      <span class="dir">Next →</span>
+      <span class="ttl">Lesson 7 · Optimization Intuition</span>
+    </a>
+  </nav>
+
+</main>
+
+<footer class="foot">
+  Lesson 6 of 29 · AI → Machine Learning · Understand the <em>why</em> before the <em>how</em>.
+  <span class="byline">&copy; 2026 <a href="https://www.linkedin.com/in/adda-missoum-a534a7319/">Missoum Hadi Adda</a> &middot; Licensed <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>, code <a href="https://opensource.org/license/mit">MIT</a> &middot; <a href="https://github.com/addahadi/ai-to-ml">Source</a> &middot; Built with <a href="https://claude.com/claude-code">Claude Code</a></span>
+  <img src="https://addahadi.goatcounter.com/count?p=/modules/lesson-06.html" alt="" width="1" height="1">
+</footer>
+
+</body>
+</html>

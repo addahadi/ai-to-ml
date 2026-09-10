@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 8 — The Scientific Python Stack</title>
+<link rel="stylesheet" href="../assets/style.css">
+<meta name="description" content="The scientific Python stack for ML — NumPy, Pandas, and Matplotlib — the tools you build everything else with.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="AI → Machine Learning">
+<meta property="og:title" content="Lesson 8 — The Scientific Python Stack">
+<meta property="og:description" content="The scientific Python stack for ML — NumPy, Pandas, and Matplotlib — the tools you build everything else with.">
+<meta property="og:url" content="https://addahadi.github.io/ai-to-ml/modules/lesson-08.html">
+<meta name="twitter:card" content="summary">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand-mark" href="../index.html">AI<span>&#8594;</span>ML</a>
+    <nav>
+      <a href="../index.html">Roadmap</a>
+      <a href="#why">Why a stack</a>
+      <a href="#numpy">NumPy</a>
+      <a href="#vectorize">Vectorization</a>
+      <a href="#pandas">Pandas</a>
+      <a href="#matplotlib">Matplotlib</a>
+      <a href="#together">All together</a>
+      <a href="#exercises">Exercises</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="crumb"><a href="../index.html">Roadmap</a> &nbsp;&#8250;&nbsp; Part II &middot; The Machine Learning Mindset &nbsp;&#8250;&nbsp; Module 2 &middot; Tools &amp; Just-Enough Math</div>
+
+  <section class="hero">
+    <span class="eyebrow">Lesson 08 &middot; Setup</span>
+    <h1>The Scientific Python Stack: Equipment for the Loop You Already Understand</h1>
+    <p class="lead">Module 1 finished the theory: model, loss, gradient, step. You can run that loop on paper. This lesson gives you the three tools that let you run it on real data at real speed &mdash; <strong>NumPy</strong> to hold numbers and do arithmetic on all of them at once, <strong>Pandas</strong> to hold a labelled table of mixed data, and <strong>Matplotlib</strong> to draw the loss curve you learned to read last lesson. This is a lesson about equipment, so it earns its place only by connecting every feature back to a question the theory already raised.</p>
+    <div class="meta-row">
+      <span><b>Reading:</b> ~35 min</span>
+      <span><b>Prerequisites:</b> Lessons 5&ndash;7 &middot; basic Python</span>
+      <span><b>Code:</b> real NumPy / Pandas / Matplotlib you can run</span>
+    </div>
+  </section>
+
+  <div class="callout why">
+    <div class="callout-label">Why stop the theory to learn libraries</div>
+    <p>Because from Lesson 10 onward every algorithm in this course is <em>built from scratch in NumPy before</em> Scikit-learn is allowed anywhere near it. You cannot build a Linear Regression from scratch if the array that holds your data is a mystery. The from-scratch promise of this course &mdash; the thing that turns "I've heard of gradient descent" into "I have written gradient descent" &mdash; is cashed out entirely in these three libraries. So they are not a detour from the ML content; they are the surface the ML content is written on.</p>
+    <p>There is a sharper reason too. In Lesson 7 you computed a gradient over three houses by hand. Real datasets have millions of rows, and the gradient must be recomputed on every one of thousands of steps. Done with an ordinary Python <code>for</code> loop, that is slow enough to make learning impractical &mdash; not inconvenient, <em>impractical</em>, as in "the run finishes next week". NumPy is the reason it finishes in seconds instead. This lesson is where "training a model" stops being a thought experiment and becomes something your laptop can actually do.</p>
+  </div>
+
+  <h2 id="learning-goals">What this lesson delivers</h2>
+  <ul class="checklist">
+    <li>Why plain Python lists are the wrong container for numeric ML, and what NumPy's array fixes.</li>
+    <li><em>Vectorization</em>: expressing a whole-dataset computation as one array operation &mdash; and why it is 10&ndash;100&times; faster, not just shorter.</li>
+    <li><em>Broadcasting</em>: the rule that lets arrays of different shapes combine, and how it removes loops you'd otherwise write.</li>
+    <li>The <em>shape</em> discipline &mdash; the single habit that prevents most bugs you will meet from here to the end of the course.</li>
+    <li>Pandas' <em>DataFrame</em>: why a labelled table of mixed columns is a different tool from an array, and where each belongs.</li>
+    <li>Matplotlib: drawing the loss curve and the scatter plot that turn numbers into the diagnostics from Lesson 7.</li>
+    <li>One end-to-end pass: CSV on disk &rarr; DataFrame &rarr; array &rarr; the training loop &rarr; a plotted loss curve.</li>
+  </ul>
+
+  <!-- =================================================================== -->
+  <h2 id="why">1 &middot; Why not just use plain Python?</h2>
+
+  <p>Python already has lists, loops, and arithmetic. A house dataset is just a list of numbers; a gradient is just a sum. Why introduce a library at all? The honest answer has two halves, and both are worth seeing before you accept the tool.</p>
+
+  <h3>Half one &mdash; lists are slow for numbers, structurally</h3>
+
+  <p>A Python list is a list of <em>objects</em>. The number <code>200</code> inside a list is not eight bytes of value sitting next to its neighbours; it is a full Python object &mdash; a boxed integer with a type tag, a reference count, and a pointer &mdash; and the list holds a pointer <em>to</em> it, somewhere else in memory. Adding two lists element by element means, for every single element: follow a pointer, unbox the object, check its type, do the addition, box the result, store a new pointer. That per-element overhead dwarfs the actual arithmetic.</p>
+
+  <p>A NumPy array is the opposite: a single block of raw numbers, all the same type, laid out contiguously in memory &mdash; the same thing a C or Fortran array is. Arithmetic over it runs as a tight loop in compiled C, one machine instruction per element, with the CPU streaming cache-friendly memory and often doing several elements per instruction. The difference is not stylistic. It is the difference between an interpreter and a compiler, applied a million times.</p>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Task: add two sequences of 10 million numbers</th><th>Approx. time</th><th>Relative</th></tr></thead>
+      <tbody>
+        <tr><td>Python <code>for</code> loop over two lists</td><td>~1,500 ms</td><td>&times;1 (baseline)</td></tr>
+        <tr><td>List comprehension</td><td>~800 ms</td><td>~2&times; faster</td></tr>
+        <tr><td>NumPy <code>a + b</code></td><td>~15 ms</td><td><b>~100&times; faster</b></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>The exact numbers depend on your machine; the <em>order of magnitude</em> does not. Two orders of magnitude is the gap between a training run you watch finish and one you abandon. And it compounds: the gradient loop from Lesson 7 does this kind of arithmetic on every step, thousands of times.</p>
+
+  <h3>Half two &mdash; a dataset is not a bag of numbers</h3>
+
+  <p>The speed argument gets you NumPy. But real data arrives as a <em>table</em>: rows are houses, columns are named quantities of different kinds &mdash; a floating-point size, an integer bedroom count, a text neighbourhood, a price with missing values scattered through it. A raw numeric array is the wrong shape for that: it has no column names, insists every cell share one type, and has no idea what a missing value is. That is Pandas' job. And once you have numbers, you need to <em>see</em> them &mdash; the loss curve, the scatter of points &mdash; which is Matplotlib's.</p>
+
+  <div class="frame">
+    <div class="frame-row"><div class="n">1</div><div class="c"><b>NumPy &mdash; the numerical engine</b><span> &mdash; homogeneous n-dimensional arrays and fast math over them. This is where the <em>model</em> and the <em>gradient</em> actually live. Every from-scratch algorithm in this course is NumPy.</span></div></div>
+    <div class="frame-row"><div class="n">2</div><div class="c"><b>Pandas &mdash; the data table</b><span> &mdash; a labelled, mixed-type table (the <code>DataFrame</code>) for loading, cleaning, and exploring data before it becomes a numeric array. Built <em>on top of</em> NumPy. This is where a dataset lives before training.</span></div></div>
+    <div class="frame-row"><div class="n">3</div><div class="c"><b>Matplotlib &mdash; the plotting layer</b><span> &mdash; turns arrays into figures: the loss curve, the scatter plot, the decision boundary. Your eyes are a diagnostic instrument, and this is how you feed them.</span></div></div>
+  </div>
+
+  <div class="callout connect">
+    <div class="callout-label">Where Scikit-learn is in this picture &mdash; deliberately, not yet</div>
+    <p>You may know that Scikit-learn can do a linear regression in three lines. It can, and it sits on top of exactly these three libraries. We are holding it back on purpose: calling <code>.fit()</code> before you have <em>written</em> <code>.fit()</code> teaches you nothing about what it does. NumPy first, from scratch, so that when Scikit-learn arrives in Lesson 10's later half it is a convenience you understand rather than a black box you trust. The stack in this lesson is the foundation all of it &mdash; yours and theirs &mdash; is built on.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="numpy">2 &middot; NumPy: the array is the whole idea</h2>
+
+  <p>Everything in NumPy is organised around one object, the <strong>ndarray</strong> (n-dimensional array). Learn its three defining attributes and most of the library follows.</p>
+
+  <div class="callout def">
+    <div class="callout-label">The ndarray, in three attributes</div>
+    <p>An array is a grid of values, <em>all of one type</em>, indexed by integers. Three attributes describe it completely:</p>
+    <div class="frame">
+      <div class="frame-row"><div class="n">1</div><div class="c"><b>shape</b><span> &mdash; a tuple giving the size along each dimension. <code>(3,)</code> is three numbers in a line (a vector); <code>(3, 2)</code> is three rows by two columns (a matrix); <code>(1000, 4)</code> is a thousand rows of four features &mdash; the natural shape of a dataset.</span></div></div>
+      <div class="frame-row"><div class="n">2</div><div class="c"><b>dtype</b><span> &mdash; the single type every element shares: <code>float64</code>, <code>int64</code>, <code>bool</code>. Homogeneity is the price of speed and the reason arithmetic is one C loop.</span></div></div>
+      <div class="frame-row"><div class="n">3</div><div class="c"><b>ndim</b><span> &mdash; how many dimensions (the length of <code>shape</code>). A vector is 1-D, a matrix 2-D. In this course you will rarely go past 2-D.</span></div></div>
+    </div>
+  </div>
+
+  <p class="code-cap">creating arrays &mdash; the handful of constructors you will actually use</p>
+  <pre><code><span class="tok-k">import</span> numpy <span class="tok-k">as</span> np           <span class="tok-c"># the universal alias; everyone writes np</span>
+
+prices = np.array([<span class="tok-n">180</span>, <span class="tok-n">200</span>, <span class="tok-n">220</span>])   <span class="tok-c"># from a Python list  -> shape (3,)</span>
+prices.shape                        <span class="tok-c"># (3,)</span>
+prices.dtype                        <span class="tok-c"># dtype('int64')</span>
+
+X = np.array([[<span class="tok-n">60</span>, <span class="tok-n">2</span>],                <span class="tok-c"># a 2-D array: 3 houses, 2 features each</span>
+              [<span class="tok-n">95</span>, <span class="tok-n">3</span>],                <span class="tok-c">#   column 0 = size m2, column 1 = bedrooms</span>
+              [<span class="tok-n">120</span>, <span class="tok-n">4</span>]])
+X.shape                             <span class="tok-c"># (3, 2)   <- rows, then columns</span>
+
+np.zeros(<span class="tok-n">5</span>)                        <span class="tok-c"># [0. 0. 0. 0. 0.]   handy for initialising</span>
+np.ones((<span class="tok-n">2</span>, <span class="tok-n">3</span>))                    <span class="tok-c"># a 2x3 block of ones</span>
+np.arange(<span class="tok-n">0</span>, <span class="tok-n">1</span>, <span class="tok-n">0.25</span>)             <span class="tok-c"># [0.   0.25 0.5  0.75]   like range, but floats</span>
+np.linspace(<span class="tok-n">0</span>, <span class="tok-n">1</span>, <span class="tok-n">5</span>)              <span class="tok-c"># [0.  0.25 0.5  0.75 1. ]  5 evenly spaced points</span></code></pre>
+
+  <div class="callout intuition">
+    <div class="callout-label">Read <code>shape</code> as "rows, then columns", always</div>
+    <p>The convention that a dataset is <code>(n_samples, n_features)</code> &mdash; rows are examples, columns are features &mdash; is universal across NumPy, Pandas, and Scikit-learn. A dataset of 1,000 houses with 4 features each is <code>(1000, 4)</code>. Fix this in your head now: nearly every array bug in the rest of the course is a shape you assumed was one thing and was another, and the fix always begins with printing <code>.shape</code> and reading it as rows-by-columns.</p>
+  </div>
+
+  <h3>Indexing and slicing &mdash; grabbing rows, columns, and subsets</h3>
+
+  <p class="code-cap">selecting parts of an array without copying loops</p>
+  <pre><code>X[<span class="tok-n">0</span>]            <span class="tok-c"># first row:            [60  2]</span>
+X[<span class="tok-n">0</span>, <span class="tok-n">1</span>]         <span class="tok-c"># row 0, column 1:      2       (a single value)</span>
+X[:, <span class="tok-n">0</span>]         <span class="tok-c"># EVERY row, column 0:  [ 60  95 120]   (all the sizes)</span>
+X[:, <span class="tok-n">1</span>]         <span class="tok-c"># EVERY row, column 1:  [ 2  3  4]      (all the bedroom counts)</span>
+X[<span class="tok-n">0</span>:<span class="tok-n">2</span>]          <span class="tok-c"># first two rows (a slice, like a list)</span>
+
+<span class="tok-c"># Boolean masking: select by a condition, no loop, no if.</span>
+prices[prices &gt; <span class="tok-n">190</span>]              <span class="tok-c"># [200 220]  -> keeps only elements passing the test</span>
+prices[prices &gt; <span class="tok-n">190</span>] = <span class="tok-n">999</span>        <span class="tok-c"># ...and you can assign into the selection too</span></code></pre>
+
+  <p>The comma inside the brackets is the thing to notice: <code>X[:, 0]</code> means "all rows, column zero", and it hands you an entire column as a 1-D array in one expression. In plain Python that is a loop; here it is punctuation. That colon-comma idiom &mdash; pulling a whole column out to feed the model &mdash; is one you will type hundreds of times.</p>
+
+  <!-- =================================================================== -->
+  <h2 id="vectorize">3 &middot; Vectorization &amp; broadcasting: the loop that vanishes</h2>
+
+  <p>This is the section that matters. Vectorization is the single skill that separates NumPy code that is fast and readable from NumPy code that is neither. The idea is a mental discipline as much as a technique.</p>
+
+  <div class="callout def">
+    <div class="callout-label">Vectorization</div>
+    <p>Expressing an operation over an <em>entire array at once</em>, as a single expression, instead of looping over its elements in Python. You stop thinking "for each house, do X" and start thinking "do X to the whole column of houses". The loop still happens &mdash; but down in compiled C, where it is a hundred times faster, instead of up in the interpreter.</p>
+  </div>
+
+  <p>Arithmetic between arrays is <strong>element-wise</strong> by default. This is the foundation everything else builds on:</p>
+
+  <pre><code>a = np.array([<span class="tok-n">1</span>, <span class="tok-n">2</span>, <span class="tok-n">3</span>])
+b = np.array([<span class="tok-n">10</span>, <span class="tok-n">20</span>, <span class="tok-n">30</span>])
+
+a + b            <span class="tok-c"># [11 22 33]   pairs up, adds each pair</span>
+a * b            <span class="tok-c"># [10 40 90]   element-wise product (NOT matrix multiply)</span>
+a ** <span class="tok-n">2</span>           <span class="tok-c"># [1 4 9]      squares each element</span>
+a - <span class="tok-n">1</span>            <span class="tok-c"># [0 1 2]      the 1 is applied to every element -> broadcasting</span></code></pre>
+
+  <div class="callout def">
+    <div class="callout-label">Broadcasting</div>
+    <p>The rule that lets NumPy combine arrays of <em>different but compatible</em> shapes by conceptually stretching the smaller one to fit &mdash; without ever copying the data. <code>a - 1</code> works because the scalar <code>1</code> is broadcast across all three elements of <code>a</code>. A <code>(1000, 4)</code> dataset minus a <code>(4,)</code> row of column-means subtracts the right mean from every column of every row, in one expression. It is how you apply one small thing to a whole big thing, loop-free.</p>
+  </div>
+
+  <div class="callout math">
+    <div class="callout-label">The broadcasting rule, precisely &mdash; it is only two lines</div>
+    <p>Line up the two shapes from the <em>right</em>. Two dimensions are compatible when they are <strong>equal</strong>, or when <strong>one of them is 1</strong> (the size-1 dimension is stretched to match). If every aligned pair is compatible, the arrays broadcast; otherwise NumPy raises a shape error &mdash; which is a gift, because it caught a bug you would otherwise have shipped.</p>
+    <div class="eq">(1000, 4) &nbsp;with&nbsp; (4,) &nbsp;&rarr;&nbsp; treat (4,) as (1, 4) &nbsp;&rarr;&nbsp; stretch the 1 to 1000 &nbsp;&rarr;&nbsp; result (1000, 4) &#10003;</div>
+    <div class="eq">(1000, 4) &nbsp;with&nbsp; (3,) &nbsp;&rarr;&nbsp; 4 and 3 are unequal and neither is 1 &nbsp;&rarr;&nbsp; <b>error</b> &#10007;</div>
+  </div>
+
+  <h3>The payoff: the Lesson 7 gradient, with no loop</h3>
+
+  <p>Here is where the theory and the tool meet. In Lesson 7 you computed, by hand, the gradient of MSE for the line model <span class="var">&#375; = w&middot;x + b</span>. The math was:</p>
+
+  <div class="eq">&part;J/&part;<span class="var">w</span> = &minus;(2/n) &middot; &Sigma; <span class="var">x&#7522;</span>(<span class="var">y&#7522;</span> &minus; <span class="var">&#375;&#7522;</span>) &nbsp;&nbsp;&nbsp;&nbsp; &part;J/&part;<span class="var">b</span> = &minus;(2/n) &middot; &Sigma; (<span class="var">y&#7522;</span> &minus; <span class="var">&#375;&#7522;</span>)</div>
+
+  <p>Watch what those two formulas become in NumPy. Every sum-over-<span class="var">i</span> disappears into a single array expression:</p>
+
+  <p class="code-cap">the same gradient, two ways &mdash; contrast them line for line</p>
+  <pre><code><span class="tok-c"># --- the loop a beginner writes (correct, but slow and noisy) ---</span>
+<span class="tok-k">def</span> gradient_loop(x, y, w, b):
+    n = len(x)
+    dw, db = <span class="tok-n">0.0</span>, <span class="tok-n">0.0</span>
+    <span class="tok-k">for</span> i <span class="tok-k">in</span> range(n):
+        y_hat = w * x[i] + b            <span class="tok-c"># predict one house</span>
+        error = y[i] - y_hat            <span class="tok-c"># its residual</span>
+        dw += x[i] * error              <span class="tok-c"># accumulate the two sums by hand</span>
+        db += error
+    <span class="tok-k">return</span> -<span class="tok-n">2</span>/n * dw, -<span class="tok-n">2</span>/n * db
+
+<span class="tok-c"># --- the vectorized version (fast, and reads like the math) ---</span>
+<span class="tok-k">def</span> gradient(x, y, w, b):
+    y_hat = w * x + b                   <span class="tok-c"># ALL predictions at once   -> array</span>
+    error = y - y_hat                   <span class="tok-c"># ALL residuals at once     -> array</span>
+    dw = -<span class="tok-n">2</span> * np.mean(x * error)      <span class="tok-c"># one product, one mean     -> scalar</span>
+    db = -<span class="tok-n">2</span> * np.mean(error)          <span class="tok-c"># one mean                  -> scalar</span>
+    <span class="tok-k">return</span> dw, db</code></pre>
+
+  <p>The two functions compute the identical numbers. But the second has no <code>for</code>, no index <code>i</code>, no running accumulators &mdash; and on a million rows it is roughly a hundred times faster. Read the vectorized version again and notice it is almost a transcription of the formula: <code>y - y_hat</code> is the residual <span class="var">y &minus; &#375;</span>, <code>np.mean(x * error)</code> is the average of <span class="var">x&#7522;(y&#7522; &minus; &#375;&#7522;)</span>. <strong>This is the point of the whole lesson.</strong> When your NumPy reads like your mathematics, the code is easy to trust; when you're hand-managing indices and accumulators, it is easy to get subtly wrong.</p>
+
+  <div class="callout practice">
+    <div class="callout-label">Reductions: turning an array into a summary number</div>
+    <p>The gradient used <code>np.mean</code>. That family &mdash; <em>reductions</em> &mdash; collapses an array to a summary, and you'll reach for them constantly: <code>np.sum</code>, <code>np.mean</code>, <code>np.min</code>, <code>np.max</code>, <code>np.std</code>. The <code>axis</code> argument controls the direction of the collapse, and it is worth burning in:</p>
+    <pre><code>M = np.array([[<span class="tok-n">1</span>, <span class="tok-n">2</span>],
+              [<span class="tok-n">3</span>, <span class="tok-n">4</span>],
+              [<span class="tok-n">5</span>, <span class="tok-n">6</span>]])          <span class="tok-c"># shape (3, 2)</span>
+
+M.sum()               <span class="tok-c"># 21          everything, to one number</span>
+M.sum(axis=<span class="tok-n">0</span>)         <span class="tok-c"># [ 9 12]     collapse the ROWS -> one total per column</span>
+M.sum(axis=<span class="tok-n">1</span>)         <span class="tok-c"># [ 3  7 11]  collapse the COLUMNS -> one total per row</span></code></pre>
+    <p>Mnemonic: <code>axis=0</code> is the axis that <em>disappears</em>, so <code>axis=0</code> crushes the 3 rows and leaves the 2 columns &mdash; a per-column result. That "the axis you name is the one that vanishes" rule saves you from guessing every time. Computing a per-feature mean to scale your data (Lesson 12) is exactly <code>X.mean(axis=0)</code>.</p>
+  </div>
+
+  <div class="callout limit">
+    <div class="callout-label">The shape-error you <em>want</em>, and the silent bug you don't</div>
+    <p>A mismatched shape usually raises a loud error &mdash; good, you fix it immediately. The dangerous case is when shapes broadcast in a way you didn't intend and produce a <em>wrong answer silently</em>. The classic: subtracting a column vector of shape <code>(n, 1)</code> from a row vector of shape <code>(n,)</code> yields an <code>(n, n)</code> matrix, not the <code>(n,)</code> you wanted &mdash; and no error is raised because it is a legal broadcast. The defence is a habit, not a trick: <strong>print <code>.shape</code> whenever an array does something surprising</strong>, and keep a mental note of what shape each variable should be. This one discipline prevents the majority of bugs in the from-scratch lessons ahead.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="pandas">4 &middot; Pandas: the labelled table</h2>
+
+  <p>NumPy holds numbers beautifully and knows nothing about what they mean. Real data needs names, mixed types, and a story for missing values. That is the <strong>DataFrame</strong> &mdash; think of it as a spreadsheet or a database table that lives in Python, or as a dictionary of equal-length columns where each column may have its own type.</p>
+
+  <div class="callout def">
+    <div class="callout-label">Series and DataFrame</div>
+    <p>A <strong>Series</strong> is a single labelled column: an array of values plus an <em>index</em> of labels. A <strong>DataFrame</strong> is a set of Series sharing one index &mdash; a two-dimensional table where every column is named and may hold a different type (one column <code>float</code>, another <code>int</code>, another text). The DataFrame is Pandas' whole reason to exist, and it is where a dataset lives from the moment you load it until the moment you hand clean numbers to the model.</p>
+  </div>
+
+  <p class="code-cap">loading and inspecting a dataset &mdash; the first five minutes with any data</p>
+  <pre><code><span class="tok-k">import</span> pandas <span class="tok-k">as</span> pd            <span class="tok-c"># the universal alias, like np</span>
+
+df = pd.read_csv(<span class="tok-s">"houses.csv"</span>)    <span class="tok-c"># a whole CSV file -> a DataFrame, one line</span>
+
+df.head()             <span class="tok-c"># first 5 rows      -> always look before you leap</span>
+df.shape              <span class="tok-c"># (1000, 4)         -> rows, columns, same convention as NumPy</span>
+df.columns            <span class="tok-c"># the column names</span>
+df.info()             <span class="tok-c"># types + how many non-null values per column (spot missing data)</span>
+df.describe()         <span class="tok-c"># count, mean, std, min/max per numeric column -> a fast sanity check</span></code></pre>
+
+  <div class="callout intuition">
+    <div class="callout-label">Why these four commands, every single time</div>
+    <p><code>head</code>, <code>shape</code>, <code>info</code>, and <code>describe</code> are not busywork &mdash; they are how you catch the disasters that silently ruin a model before you've trained anything. <code>info</code> reveals a column that is text when you assumed it was numeric, or that is missing 300 of its 1,000 values. <code>describe</code> reveals a "price" whose minimum is &minus;1 or whose maximum is 10,000,000 &mdash; a data-entry error or a unit mixed up. Lesson 4 called data preparation most of the real work; this is the reconnaissance that starts it. A model trained on data you never looked at is a guess wearing a lab coat.</p>
+  </div>
+
+  <p class="code-cap">selecting columns, filtering rows, handling the missing</p>
+  <pre><code>df[<span class="tok-s">"price"</span>]                    <span class="tok-c"># one column       -> a Series</span>
+df[[<span class="tok-s">"size_m2"</span>, <span class="tok-s">"bedrooms"</span>]]    <span class="tok-c"># several columns   -> a smaller DataFrame</span>
+
+df[df[<span class="tok-s">"price"</span>] &gt; <span class="tok-n">190</span>]         <span class="tok-c"># rows passing a condition (boolean masking, as in NumPy)</span>
+df[df[<span class="tok-s">"bedrooms"</span>] &gt;= <span class="tok-n">3</span>][<span class="tok-s">"price"</span>].mean()   <span class="tok-c"># chain: filter, pick a column, summarise</span>
+
+df.isna().sum()               <span class="tok-c"># how many missing values per column</span>
+df = df.dropna()              <span class="tok-c"># drop rows with any missing value...</span>
+df[<span class="tok-s">"size_m2"</span>].fillna(df[<span class="tok-s">"size_m2"</span>].mean())   <span class="tok-c"># ...or fill them with the column mean</span></code></pre>
+
+  <div class="callout why">
+    <div class="callout-label">The bridge you will cross in every project: DataFrame &rarr; array</div>
+    <p>Here is the division of labour that ties the stack together. You <em>explore, clean, and select</em> in Pandas &mdash; because that is where names, types, and missing values are first-class. Then, at the moment of training, you hand plain numbers to NumPy &mdash; because the model and the gradient want a fast, homogeneous, nameless array, and nothing else. That handoff is one method call:</p>
+    <pre><code>X = df[[<span class="tok-s">"size_m2"</span>, <span class="tok-s">"bedrooms"</span>]].to_numpy()   <span class="tok-c"># features  -> shape (n, 2)</span>
+y = df[<span class="tok-s">"price"</span>].to_numpy()                    <span class="tok-c"># target    -> shape (n,)</span>
+
+<span class="tok-c"># From here on it is pure NumPy: X and y feed the exact loop from Lesson 7.</span></code></pre>
+    <p>Keep the two roles distinct in your mind and the stack stops feeling like two overlapping tools. Pandas is the <em>workshop</em> where you prepare the material; NumPy is the <em>engine</em> you feed it into. Scikit-learn, when it arrives, will speak this same <code>X</code>, <code>y</code> language &mdash; which is why the convention is worth internalising now.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="matplotlib">5 &middot; Matplotlib: making the numbers visible</h2>
+
+  <p>Lesson 7 told you the loss curve is your primary diagnostic instrument &mdash; that its <em>shape</em> tells you whether the learning rate is healthy, too small, or diverging. Matplotlib is how you actually draw it. Two plot types carry almost everything you'll need in this course.</p>
+
+  <p class="code-cap">the loss curve &mdash; the plot you learned to read before you could draw it</p>
+  <pre><code><span class="tok-k">import</span> matplotlib.pyplot <span class="tok-k">as</span> plt   <span class="tok-c"># the universal alias: plt</span>
+
+<span class="tok-c"># Suppose training filled this list, one loss value per step (see Section 6).</span>
+plt.plot(loss_history)                <span class="tok-c"># x = step index (0,1,2,...), y = the losses</span>
+plt.xlabel(<span class="tok-s">"step"</span>)
+plt.ylabel(<span class="tok-s">"cost J"</span>)
+plt.title(<span class="tok-s">"Loss curve"</span>)
+plt.show()                            <span class="tok-c"># render the figure (or savefig to a file)</span></code></pre>
+
+  <p>That handful of lines produces the exact curve from Lesson 7 &mdash; the steep initial drop, then the long flattening tail of a healthy run, or the jagged bouncing of an <span class="var">&alpha;</span> set too high. You now have both halves: last lesson taught you what the curve <em>means</em>; this line teaches you how to <em>see</em> it. Reading the loss curve stops being a metaphor and becomes something on your screen.</p>
+
+  <p class="code-cap">the scatter plot &mdash; look at your data before you model it</p>
+  <pre><code>plt.scatter(X[:, <span class="tok-n">0</span>], y)              <span class="tok-c"># feature (size) on x, target (price) on y</span>
+plt.xlabel(<span class="tok-s">"size (m2)"</span>)
+plt.ylabel(<span class="tok-s">"price (k EUR)"</span>)
+
+<span class="tok-c"># overlay the line the model learned, to SEE the fit</span>
+xs = np.linspace(X[:, <span class="tok-n">0</span>].min(), X[:, <span class="tok-n">0</span>].max(), <span class="tok-n">100</span>)
+plt.plot(xs, w * xs + b, color=<span class="tok-s">"red"</span>)   <span class="tok-c"># the fitted line y = wx + b</span>
+plt.show()</code></pre>
+
+  <div class="callout intuition">
+    <div class="callout-label">A plot is a hypothesis test you run with your eyes</div>
+    <p>Before fitting anything, a scatter plot answers the question that decides whether a line is even the right shape: <em>does price roughly rise with size?</em> If the cloud of points trends upward, a linear model is a sensible bet (Lesson 5's "shape is a bet"). If it curves, or fans out, or splits into two clusters, you have learned that <em>before</em> wasting a training run &mdash; and you've learned which lesson you actually need (polynomial features, scaling, or a different model). Plotting is not decoration you add at the end. It is reconnaissance you do at the start, and a debugger you return to whenever a number surprises you.</p>
+  </div>
+
+  <div class="callout limit">
+    <div class="callout-label">Plotting has a ceiling: two, maybe three dimensions</div>
+    <p>A scatter plot shows one feature against the target. Real models have dozens of features, and you cannot plot a 50-dimensional cloud &mdash; your eyes stop at three axes. So visualization is indispensable for <em>intuition and debugging on one or two features at a time</em>, and useless as a way to "see" a high-dimensional fit directly. This limit is one of the motivations for dimensionality reduction (Lesson 26), which tries to squeeze many features down to two you <em>can</em> plot. For now, take the lesson as: plot relentlessly, but know that a good-looking 2-D plot is not proof the full-dimensional model is good.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="together">6 &middot; Putting the stack together: one honest pass</h2>
+
+  <p>Everything so far, assembled into the shape every project in this course takes. This is the Lesson 7 training loop &mdash; unchanged &mdash; now fed by real data through Pandas and NumPy, and reporting itself through Matplotlib. Read it as the skeleton you'll flesh out from Lesson 10 onward.</p>
+
+  <p class="code-cap">load &rarr; prepare &rarr; train &rarr; plot &mdash; the whole stack in one screen</p>
+  <pre><code><span class="tok-k">import</span> numpy <span class="tok-k">as</span> np
+<span class="tok-k">import</span> pandas <span class="tok-k">as</span> pd
+<span class="tok-k">import</span> matplotlib.pyplot <span class="tok-k">as</span> plt
+
+<span class="tok-c"># 1. LOAD + PREPARE  (Pandas): the workshop</span>
+df = pd.read_csv(<span class="tok-s">"houses.csv"</span>)
+df = df.dropna()                              <span class="tok-c"># deal with missing values honestly</span>
+x = df[<span class="tok-s">"size_m2"</span>].to_numpy()               <span class="tok-c"># hand clean numbers to NumPy</span>
+y = df[<span class="tok-s">"price"</span>].to_numpy()                 <span class="tok-c"># shapes: both (n,)</span>
+
+<span class="tok-c"># 2. TRAIN  (NumPy): the engine -- this is the Lesson 7 loop, verbatim</span>
+w, b = <span class="tok-n">0.0</span>, <span class="tok-n">0.0</span>                            <span class="tok-c"># start anywhere on the landscape</span>
+alpha = <span class="tok-n">0.0001</span>                             <span class="tok-c"># learning rate (needs scaling; see note)</span>
+loss_history = []                             <span class="tok-c"># we will plot this afterwards</span>
+
+<span class="tok-k">for</span> step <span class="tok-k">in</span> range(<span class="tok-n">1000</span>):
+    y_hat = w * x + b                         <span class="tok-c"># MODEL   -> all predictions   (Lesson 5)</span>
+    error = y - y_hat                         <span class="tok-c"># residuals</span>
+    J     = np.mean(error ** <span class="tok-n">2</span>)             <span class="tok-c"># LOSS: MSE, one number       (Lesson 6)</span>
+    loss_history.append(J)
+
+    dw = -<span class="tok-n">2</span> * np.mean(x * error)          <span class="tok-c"># GRADIENT, vectorized        (Lesson 7)</span>
+    db = -<span class="tok-n">2</span> * np.mean(error)
+    w  = w - alpha * dw                       <span class="tok-c"># STEP: the update rule        (Lesson 7)</span>
+    b  = b - alpha * db
+
+<span class="tok-c"># 3. REPORT  (Matplotlib): the instrument</span>
+plt.plot(loss_history)                        <span class="tok-c"># is the curve healthy? (Lesson 7)</span>
+plt.xlabel(<span class="tok-s">"step"</span>); plt.ylabel(<span class="tok-s">"cost J"</span>)
+plt.show()</code></pre>
+
+  <div class="callout why">
+    <div class="callout-label">Look at how little of this is new</div>
+    <p>The entire middle block &mdash; the actual learning &mdash; is the four-line loop you already understand from Lesson 7, translated into NumPy. Pandas wraps the front (getting data in), Matplotlib wraps the back (seeing what happened), and NumPy is the engine in the centre. <strong>You have now seen a complete, runnable training program</strong>, and there is nothing mysterious left in it. From Lesson 10 the <code>model</code> and <code>loss</code> lines will change to become real Linear Regression, then Logistic Regression, then the rest &mdash; but this scaffold, and these three libraries, stay exactly as they are.</p>
+  </div>
+
+  <div class="callout limit">
+    <div class="callout-label">One honesty note about that <code>alpha = 0.0001</code></div>
+    <p>The learning rate above is suspiciously tiny, and there is a reason: house sizes (tens to hundreds) and prices (hundreds of thousands) live on wildly different scales, which &mdash; exactly as Lesson 7 warned &mdash; creates a long, narrow ravine where any larger <span class="var">&alpha;</span> diverges. The real fix isn't a microscopic learning rate; it's <strong>feature scaling</strong>, which flattens the ravine into a round bowl and lets a normal <span class="var">&alpha;</span> work. That's Lesson 12. This snippet runs, but it runs badly on purpose &mdash; a reminder that having the tools is not the same as using them well, which is what the rest of the course is for.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="limitations">7 &middot; Limitations &mdash; what to keep honest about</h2>
+  <div class="callout limit">
+    <div class="callout-label">Guardrails to carry forward</div>
+    <ul>
+      <li><strong>These are tools, not understanding.</strong> Knowing NumPy does not mean you know machine learning any more than knowing a text editor means you can write. The stack is the medium; the ideas from Modules 1 and 3&ndash;8 are the content. Never mistake fluency with the library for fluency with the subject.</li>
+      <li><strong>Vectorized code is fast but not free.</strong> A whole-array operation allocates a whole new array. On very large data, chaining many array operations can exhaust memory even while each one is individually fast. Speed and memory are different budgets.</li>
+      <li><strong>Broadcasting can be silently wrong.</strong> A shape mismatch that <em>errors</em> is a friend; a shape mismatch that <em>broadcasts into the wrong answer</em> is a bug that ships. Print <code>.shape</code> when confused &mdash; the habit is cheaper than the debugging session it prevents.</li>
+      <li><strong>Pandas is for preparation, not for the hot loop.</strong> Explore and clean in Pandas; convert to a NumPy array before the training loop. Doing arithmetic per-row inside a DataFrame in a Python loop throws away every speed advantage NumPy gave you.</li>
+      <li><strong>A plot persuades whether or not it is honest.</strong> Truncated axes, a hidden log scale, or cherry-picked ranges can make a bad model look good and a good one look bad. Label your axes, start counts at zero, and be as skeptical of your own plots as of anyone else's.</li>
+      <li><strong>This is a working subset, not the whole libraries.</strong> Each of these tools is vast. You have the parts this course needs; you have not "learned NumPy" in full, and that is fine. Depth comes from use, not from reading the API reference cover to cover.</li>
+    </ul>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="connection">How this connects to the next lesson</h2>
+  <div class="callout connect">
+    <div class="callout-label">Bridge to Lesson 9 &mdash; the math you actually need</div>
+    <p>You can now hold a dataset as an array, express a whole-dataset computation as one loop-free expression, load and clean real data, and plot the diagnostics from Lesson 7. That is the entire toolbox the from-scratch lessons require. One piece of preparation remains, and it is the twin of this one: where this lesson sharpened your <em>tools</em>, <strong>Lesson 9</strong> sharpens your <em>vocabulary</em>.</p>
+    <p>Lesson 9 covers just enough mathematics to make Lesson 10's derivations comfortable rather than intimidating: <strong>vectors and the dot product</strong> (so that <span class="var">w&middot;x + b</span> over many features is one operation, not a sum you write by hand), <strong>derivatives as slope</strong> (formalising the nudge you already did in Lesson 7), and <strong>probability</strong> (which Logistic Regression and Naive Bayes will need). Crucially, it is math <em>with the NumPy already attached</em> &mdash; you'll see the dot product as both a formula and a single <code>np.dot</code> call. Then Lesson 10 opens Part III and builds a real Linear Regression from scratch, and you will arrive holding both halves it needs: the equipment from this lesson, and the notation from the next.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="exercises">Exercises &amp; reflection</h2>
+  <p>These are meant to be typed into a Python session and run. The stack is learned at the keyboard, not on the page &mdash; predict each answer <em>before</em> you run it, then check.</p>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 1 &middot; Predict the shape</div>
+    <p>Given <code>X = np.array([[1, 2, 3], [4, 5, 6]])</code>, write down &mdash; before running anything &mdash; the value and shape of each: (a) <code>X.shape</code>, (b) <code>X[:, 1]</code>, (c) <code>X.sum(axis=0)</code>, (d) <code>X.sum(axis=1)</code>, (e) <code>X.mean()</code>. Then run them and reconcile any surprises.</p>
+    <details><summary>Show solution</summary>
+      <div class="details-body">
+        <p>(a) <code>(2, 3)</code> &mdash; two rows, three columns. (b) <code>[2 5]</code>, shape <code>(2,)</code> &mdash; column 1 from each row. (c) <code>[5 7 9]</code>, shape <code>(3,)</code> &mdash; <code>axis=0</code> crushes the 2 rows, leaving a per-column total. (d) <code>[6 15]</code>, shape <code>(2,)</code> &mdash; <code>axis=1</code> crushes the 3 columns, leaving a per-row total. (e) <code>3.5</code> &mdash; a single scalar, the mean of all six. The trap is (c) vs (d): the named axis is the one that <em>disappears</em>.</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 2 &middot; Kill a loop</div>
+    <p>Here is a slow, loop-based function that computes Mean Squared Error. Rewrite it as a single vectorized expression using <code>np.mean</code>, with no <code>for</code> and no index.</p>
+    <pre><code><span class="tok-k">def</span> mse_loop(y, y_hat):
+    total = <span class="tok-n">0.0</span>
+    <span class="tok-k">for</span> i <span class="tok-k">in</span> range(len(y)):
+        total += (y[i] - y_hat[i]) ** <span class="tok-n">2</span>
+    <span class="tok-k">return</span> total / len(y)</code></pre>
+    <details><summary>Show solution</summary>
+      <div class="details-body">
+        <pre><code><span class="tok-k">def</span> mse(y, y_hat):
+    <span class="tok-k">return</span> np.mean((y - y_hat) ** <span class="tok-n">2</span>)</code></pre>
+        <p>One line. <code>y - y_hat</code> broadcasts into the whole array of residuals, <code>** 2</code> squares each element, <code>np.mean</code> reduces to the average. It is faster <em>and</em> it reads like the definition of MSE from Lesson 6. If you can do this transformation fluently, you have the core skill this lesson set out to teach.</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 3 &middot; Will it broadcast?</div>
+    <p>For each pair of shapes, say whether NumPy broadcasts them and, if so, the shape of the result: (a) <code>(3, 4)</code> and <code>(4,)</code>; (b) <code>(3, 4)</code> and <code>(3,)</code>; (c) <code>(3, 1)</code> and <code>(1, 4)</code>; (d) <code>(5,)</code> and <code>(5, 1)</code>.</p>
+    <details><summary>Show solution</summary>
+      <div class="details-body">
+        <p>Align from the right; each pair must be equal or contain a 1. (a) <strong>Yes &rarr; (3, 4)</strong>: 4 matches 4; the missing left dim of the second is treated as 1 and stretched to 3. (b) <strong>No</strong>: aligning from the right pairs 4 with 3 &mdash; unequal, neither is 1 &mdash; error. (This is the common bug: to subtract a per-row value you must reshape <code>(3,)</code> to <code>(3, 1)</code> first.) (c) <strong>Yes &rarr; (3, 4)</strong>: the 1s each stretch &mdash; a classic "outer" combination. (d) <strong>Yes &rarr; (5, 5)</strong>: <code>(5,)</code> becomes <code>(1, 5)</code>, pairs with <code>(5, 1)</code>, both 1s stretch. Note (d) is exactly the silent-bug shape from Section 3 &mdash; a legal broadcast that is almost never what you meant.</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 4 &middot; A five-minute reconnaissance</div>
+    <p>You are handed <code>df = pd.read_csv("houses.csv")</code> and nothing else. In four or five sentences, describe the exact sequence of commands you would run <em>before</em> training anything, and for each say what disaster it is designed to catch. Then explain, in your own words, why you would convert to a NumPy array with <code>.to_numpy()</code> rather than training directly on the DataFrame.</p>
+  </div>
+
+  <div class="callout intuition">
+    <div class="callout-label">One-paragraph summary to lock it in</div>
+    <p>Plain Python is the wrong tool for numeric ML for two structural reasons: its lists box every number into a scattered object, making element-wise math roughly a hundred times slower than it needs to be, and it has no native notion of a labelled, mixed-type table. The scientific stack answers both. <strong>NumPy</strong>'s <em>ndarray</em> &mdash; described by its <code>shape</code>, <code>dtype</code>, and <code>ndim</code> &mdash; stores numbers contiguously and does arithmetic on all of them at once in compiled C; <strong>vectorization</strong> expresses a whole-dataset operation as one loop-free expression, and <strong>broadcasting</strong> (align shapes from the right; each pair must be equal or one) lets differently-shaped arrays combine, which is exactly how the Lesson 7 gradient collapses from a hand-written loop into <code>-2 * np.mean(x * error)</code> that reads like its own formula. <strong>Pandas</strong>' <em>DataFrame</em> is the workshop where you load a CSV, inspect it with <code>head/info/describe</code> to catch missing values and unit errors, filter and clean &mdash; then hand plain numbers to the engine with <code>.to_numpy()</code>. <strong>Matplotlib</strong> makes the numbers visible: the loss curve whose shape Lesson 7 taught you to read, and the scatter plot that tests whether a line is even the right bet before you fit one. Assembled, they run the complete load&rarr;train&rarr;plot pass, in which the learning itself is still just the four-line loop you already knew &mdash; and the deliberately tiny learning rate in that pass is a standing reminder that the ravine from unscaled features (Lesson 12) is still waiting. Tools acquired; Lesson 9 sharpens the matching vocabulary, and Lesson 10 puts both to work building Linear Regression from scratch.</p>
+  </div>
+
+  <nav class="lessonnav">
+    <a class="prev" href="lesson-07.html">
+      <span class="dir">&larr; Previous</span>
+      <span class="ttl">Lesson 7 &middot; Optimization Intuition</span>
+    </a>
+    <a class="next" href="lesson-09.html">
+      <span class="dir">Next &rarr;</span>
+      <span class="ttl">Lesson 9 &middot; The math you actually need</span>
+    </a>
+  </nav>
+
+</main>
+
+<footer class="foot">
+  Lesson 8 of 29 &middot; AI &rarr; Machine Learning &middot; Understand the <em>why</em> before the <em>how</em>.
+  <span class="byline">&copy; 2026 <a href="https://www.linkedin.com/in/adda-missoum-a534a7319/">Missoum Hadi Adda</a> &middot; Licensed <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>, code <a href="https://opensource.org/license/mit">MIT</a> &middot; <a href="https://github.com/addahadi/ai-to-ml">Source</a> &middot; Built with <a href="https://claude.com/claude-code">Claude Code</a></span>
+  <img src="https://addahadi.goatcounter.com/count?p=/modules/lesson-08.html" alt="" width="1" height="1">
+</footer>
+
+</body>
+</html>

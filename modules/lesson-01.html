@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 1 — What Is Artificial Intelligence?</title>
+<link rel="stylesheet" href="../assets/style.css">
+<meta name="description" content="What artificial intelligence actually means: a short history and the competing definitions, framed for a software engineer.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="AI → Machine Learning">
+<meta property="og:title" content="Lesson 1 — What Is Artificial Intelligence?">
+<meta property="og:description" content="What artificial intelligence actually means: a short history and the competing definitions, framed for a software engineer.">
+<meta property="og:url" content="https://addahadi.github.io/ai-to-ml/modules/lesson-01.html">
+<meta name="twitter:card" content="summary">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand-mark" href="../index.html">AI<span>→</span>ML</a>
+    <nav>
+      <a href="../index.html">Roadmap</a>
+      <a href="#history">History</a>
+      <a href="#approaches">Approaches</a>
+      <a href="#where-ml">Where ML fits</a>
+      <a href="#exercises">Exercises</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="crumb"><a href="../index.html">Roadmap</a> &nbsp;›&nbsp; Part I · The AI Landscape &nbsp;›&nbsp; Module 0 · Orientation</div>
+
+  <section class="hero">
+    <span class="eyebrow">Lesson 01 · Foundations</span>
+    <h1>What Is Artificial Intelligence?</h1>
+    <p class="lead">Before we can learn Machine Learning, we need an honest answer to a deceptively hard question: what do we actually mean by "artificial intelligence" — and why does the field keep redefining it?</p>
+    <div class="meta-row">
+      <span><b>Reading:</b> ~25 min</span>
+      <span><b>Prerequisites:</b> none</span>
+      <span><b>Code:</b> none yet — this is a map, not a machine</span>
+    </div>
+  </section>
+
+  <div class="callout intuition">
+    <div class="callout-label">Why start here and not with code</div>
+    <p>You're a software engineer, so your instinct is to build. But "AI" is one of the most overloaded terms in computing — it has meant chess programs, medical rule-bases, spam filters, and chatbots, often in the same decade. If you don't have a mental map of the territory, every later concept ("is a decision tree AI or ML?") becomes confusing. This lesson gives you that map. <strong>By the end you'll be able to place any technique — including everything else in this course — in its correct box.</strong></p>
+  </div>
+
+  <h2 id="learning-goals">What this lesson delivers</h2>
+  <ul class="checklist">
+    <li>A working definition of AI, and why no single definition satisfies everyone.</li>
+    <li>The four historical ways people have tried to define "thinking machines".</li>
+    <li>A compressed history: why AI boomed, why it crashed (twice), and why it works now.</li>
+    <li>The major <em>approaches</em> to building intelligent systems — and which one Machine Learning belongs to.</li>
+    <li>A precise placement of ML inside AI, so the rest of the course has a home.</li>
+  </ul>
+
+  <!-- =================================================================== -->
+  <h2 id="definition">1 · What is it? Defining an intelligence we can't define</h2>
+
+  <p>Here is the uncomfortable truth at the center of the field: <strong>we cannot define intelligence precisely, so we cannot define artificial intelligence precisely either.</strong> Instead, AI has always been defined by what it is <em>trying to do</em>. A useful starting definition:</p>
+
+  <div class="callout def">
+    <div class="callout-label">Working definition</div>
+    <p><strong>Artificial Intelligence</strong> is the branch of computer science concerned with building systems that perform tasks which, when done by humans, are said to require intelligence — such as perceiving, reasoning, learning, planning, understanding language, and making decisions under uncertainty.</p>
+  </div>
+
+  <p>Notice the slipperiness built into that sentence. It defines AI relative to <em>human</em> ability, which creates a famous moving target known as the <strong>AI effect</strong>: as soon as a machine can do something reliably, we stop calling it intelligent. Optical character recognition, route planning, and chess were all "AI" until they worked — then they became "just algorithms." This is why the boundary of AI feels like it keeps shifting: it does.</p>
+
+  <p>A cleaner way to organize the definitions comes from Russell &amp; Norvig, who point out that historical definitions fall along two axes:</p>
+
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr><th></th><th>Concerned with <em>thought</em></th><th>Concerned with <em>behavior</em></th></tr>
+      </thead>
+      <tbody>
+        <tr><td><b>Measured against humans</b></td><td>Thinking <em>humanly</em> — model the actual human mind (cognitive science)</td><td>Acting <em>humanly</em> — the Turing Test: be indistinguishable from a person</td></tr>
+        <tr><td><b>Measured against an ideal</b></td><td>Thinking <em>rationally</em> — the "laws of thought", formal logic</td><td>Acting <em>rationally</em> — the <b>rational agent</b>: do the right thing to achieve goals</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Modern AI overwhelmingly adopts the bottom-right box: <strong>the rational agent</strong>. We don't require a system to think like a human or to be conscious. We require it to <em>act</em> so as to achieve its goals as well as possible, given what it knows and perceives. This is the definition that makes AI an engineering discipline rather than a philosophy seminar — and it's the one this course quietly assumes.</p>
+
+  <div class="callout intuition">
+    <div class="callout-label">Engineer's translation</div>
+    <p>Forget "can it think?". Ask: <em>"Given some perception of the world, does this system choose actions that move it toward a goal, and can we measure how well?"</em> That reframing — <strong>agent, perception, action, goal, performance measure</strong> — is the load-bearing idea of the entire field.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="why-needed">2 &amp; 3 · Why was it needed? What problem does it solve?</h2>
+
+  <p>As a software engineer you already know how to make a computer do exactly what you specify. So why is a whole field needed? Because a vast category of valuable problems <strong>cannot be solved by writing explicit rules</strong>, for one of three reasons:</p>
+
+  <ul>
+    <li><strong>We can't articulate the rules.</strong> You recognize a friend's face or a handwritten "7" instantly, but you cannot write down the procedure you used. The knowledge is real but tacit.</li>
+    <li><strong>The rules are too many or too fluid.</strong> Consider spam filtering, medical diagnosis, or fraud detection. You could try to enumerate the rules, but there are thousands, they interact, and adversaries change them faster than you can patch.</li>
+    <li><strong>The problem requires searching an enormous space.</strong> A chess position has more continuations than atoms in the observable universe. No lookup table can hold the answer; the system must <em>reason</em> or <em>search</em> its way to a good move.</li>
+  </ul>
+
+  <p>AI exists to attack exactly these problems: tasks where the classical software recipe — "a human works out the algorithm, then codes it" — breaks down because the human can't work out the algorithm, or the algorithm is intractable to specify.</p>
+
+  <div class="callout why">
+    <div class="callout-label">The pivotal insight (hold onto this — it is the seed of Machine Learning)</div>
+    <p>If we <em>can't write the rules</em>, maybe we can write a program that <strong>discovers the rules from examples</strong>. Instead of "programmer → rules → program," we do "data + desired outcomes → learning procedure → rules." That inversion is the single idea that turns AI into Machine Learning. Everything in Parts II–VIII of this course is a way of carrying it out.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="history">4 · How the field developed (the parts that still matter)</h2>
+
+  <p>I'll spare you the exhaustive timeline and keep only the beats that explain <em>why the field looks the way it does today</em>. The pattern is important: AI has gone through cycles of soaring optimism and crashes ("AI winters"), and the survivor of those crashes is precisely the paradigm you're about to study.</p>
+
+  <h3>The founding (1943–1956)</h3>
+  <p>McCulloch &amp; Pitts modeled a neuron as a logic gate (1943). Turing asked "Can machines think?" and proposed his imitation game (1950). The field was formally named at the <strong>Dartmouth workshop of 1956</strong>, whose proposal confidently claimed a summer's work could make real progress on language, abstraction, and self-improvement. That optimism set the tone — and the trap.</p>
+
+  <h3>The symbolic era &amp; the first winter (1956–1980)</h3>
+  <p>Early AI bet that intelligence <em>is</em> symbol manipulation: represent knowledge as logical statements and search or deduce over them. It produced genuine milestones (theorem provers, the first chatbots, planning systems) but hit two walls: problems exploded combinatorially, and encoding real-world knowledge by hand proved staggeringly hard. Funding collapsed — the <strong>first AI winter</strong>.</p>
+
+  <h3>Expert systems &amp; the second winter (1980–1990s)</h3>
+  <p>Industry revived AI with <strong>expert systems</strong>: hand-crafted rule bases capturing a specialist's knowledge (e.g. MYCIN for infections). They worked in narrow domains and made money — but they were brittle, couldn't learn, and were nightmarish to maintain as rules multiplied. When they failed to scale, the <strong>second winter</strong> hit.</p>
+
+  <div class="callout intuition">
+    <div class="callout-label">The lesson both winters taught</div>
+    <p>Hand-coding intelligence — whether as logic or as expert rules — <strong>does not scale to the messy, uncertain real world.</strong> Both crashes came from the same root cause. The field's escape was to stop hand-coding the knowledge and start <em>learning it from data</em>.</p>
+  </div>
+
+  <h3>The statistical turn &amp; the modern boom (1990s–now)</h3>
+  <p>From the 1990s, AI reoriented around <strong>probability, statistics, and learning from data</strong> — the Machine Learning paradigm. Three forces made it explode:</p>
+  <ul>
+    <li><strong>Data</strong> — the internet and digitization produced oceans of labeled examples.</li>
+    <li><strong>Compute</strong> — cheap parallel hardware (GPUs) made training on that data feasible.</li>
+    <li><strong>Algorithms</strong> — mature statistical methods, and later deep neural networks (the 2012 ImageNet moment).</li>
+  </ul>
+  <p>The through-line: the approach that <em>survived</em> the winters and now dominates is learning from data. That's not a fashion — it's the paradigm that solved the scaling problem that killed its predecessors. And that paradigm is exactly where this course lives.</p>
+
+  <!-- =================================================================== -->
+  <h2 id="approaches">5 · The major approaches to building intelligent systems</h2>
+
+  <p>Across that history, humanity has really only tried a handful of fundamentally different strategies for making machines act intelligently. Knowing these four lets you classify <em>any</em> AI system you meet.</p>
+
+  <div class="frame">
+    <div class="frame-row"><div class="n">A</div><div class="c"><b>Search &amp; planning</b><span> — Frame the problem as states and moves; explore the space of possibilities to find a path to the goal. Powers game engines, route planners, scheduling. Intelligent behavior emerges from systematic exploration, not from knowledge.</span></div></div>
+    <div class="frame-row"><div class="n">B</div><div class="c"><b>Knowledge &amp; logic (symbolic AI / "GOFAI")</b><span> — Encode facts and rules explicitly; derive conclusions by logical inference. Expert systems, knowledge graphs, formal reasoning. Transparent and precise, but brittle and hand-built.</span></div></div>
+    <div class="frame-row"><div class="n">C</div><div class="c"><b>Statistical learning (Machine Learning)</b><span> — Don't encode the rules; infer them from data. The system improves its performance on a task through experience. This is our subject.</span></div></div>
+    <div class="frame-row"><div class="n">D</div><div class="c"><b>Bio-inspired methods</b><span> — Borrow mechanisms from nature: neural networks (brains), evolutionary/genetic algorithms (selection), swarm methods (ant colonies). Deep Learning is the neural branch grown enormous.</span></div></div>
+  </div>
+
+  <p>Real systems mix these. A self-driving car uses <em>learning</em> (C) to perceive pedestrians, <em>search/planning</em> (A) to choose a trajectory, and hand-written <em>rules</em> (B) for legal constraints like "never cross a solid line." Intelligence, in practice, is a composite.</p>
+
+  <div class="callout math">
+    <div class="callout-label">A definition worth memorizing (Tom Mitchell, 1997)</div>
+    <p>The classic, precise definition of the learning approach:</p>
+    <div class="eq">A program learns from experience <span class="var">E</span> with respect to task <span class="var">T</span> and performance measure <span class="var">P</span>, if its performance at <span class="var">T</span>, measured by <span class="var">P</span>, improves with <span class="var">E</span>.</div>
+    <p>This isn't decoration — it's the template we will fill in for <em>every</em> algorithm in the course. For spam filtering: <span class="var">T</span> = label email as spam/not, <span class="var">E</span> = a corpus of labeled emails, <span class="var">P</span> = fraction classified correctly. Keep the &lt;T, P, E&gt; triple in your head; we'll return to it constantly.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="where-ml">6 · Where Machine Learning fits — the map you'll use all course</h2>
+
+  <p>Now the payoff. Here is the containment relationship, from widest to narrowest:</p>
+
+  <div class="frame">
+    <div class="frame-row"><div class="n">1</div><div class="c"><b>Artificial Intelligence</b><span> — the whole field: any technique that makes machines act intelligently (all four approaches above).</span></div></div>
+    <div class="frame-row"><div class="n">2</div><div class="c"><b>Machine Learning ⊂ AI</b><span> — the subset that learns behavior from data instead of being explicitly programmed. <strong>This is our course.</strong></span></div></div>
+    <div class="frame-row"><div class="n">3</div><div class="c"><b>Neural Networks ⊂ ML</b><span> — one family of ML models, loosely inspired by brains.</span></div></div>
+    <div class="frame-row"><div class="n">4</div><div class="c"><b>Deep Learning ⊂ Neural Networks</b><span> — neural networks with many layers. Powers modern vision, NLP, and LLMs. <strong>Deliberately outside our scope</strong> — we stop at the ML level.</span></div></div>
+  </div>
+
+  <p>Two adjacent terms people confuse with these:</p>
+  <ul>
+    <li><strong>Data Science</strong> is not a subset of AI — it's an overlapping discipline about extracting insight from data (statistics + programming + domain knowledge). It <em>uses</em> ML as one of its tools.</li>
+    <li><strong>Generative AI / LLMs</strong> (ChatGPT and friends) are applications of <em>Deep Learning</em> — box 4. They sit two levels below where we're stopping, which is exactly why this course won't cover them beyond context.</li>
+  </ul>
+
+  <div class="callout def">
+    <div class="callout-label">Precise placement of everything you'll learn</div>
+    <p>Linear Regression, Logistic Regression, k-NN, Decision Trees, SVMs, Random Forests, k-Means, PCA — <strong>every algorithm in this course lives in box 2 (Machine Learning) and specifically in approach C (statistical learning).</strong> None of them are Deep Learning. This is "classical" or "traditional" ML: powerful, interpretable, the right tool for most real-world tabular problems, and the essential foundation before any neural network makes sense.</p>
+  </div>
+
+  <h3>A first taste of ML's internal structure</h3>
+  <p>Within Machine Learning, problems split by <em>what kind of experience</em> the system learns from. You'll meet this properly in Lesson 4, but here's the preview so the roadmap reads clearly:</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Type</th><th>The data has…</th><th>Goal</th><th>Course examples</th></tr></thead>
+      <tbody>
+        <tr><td><b>Supervised</b></td><td>inputs <em>and</em> correct answers (labels)</td><td>predict the answer for new inputs</td><td>Regression, Classification (Parts III–IV)</td></tr>
+        <tr><td><b>Unsupervised</b></td><td>inputs only, no answers</td><td>find hidden structure</td><td>k-Means, PCA (Part VII)</td></tr>
+        <tr><td><b>Reinforcement</b></td><td>rewards from acting in an environment</td><td>learn a strategy by trial and error</td><td>context only — out of scope</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="implementation">7 · How this is "implemented in practice" (at the field level)</h2>
+  <p>There's no code in this lesson, but it's worth grounding the abstractions. When an organization "does AI" today, the concrete reality is almost always an ML pipeline: collect and clean data → represent it as numbers (features) → choose a model family → train the model by optimizing a numerical objective → evaluate honestly on held-out data → deploy and monitor. Every stage in that sentence is a lesson later in this course. The philosophy of Section 1 becomes, in practice, a very concrete engineering loop — one that will feel natural to you as a software engineer.</p>
+
+  <!-- =================================================================== -->
+  <h2 id="limitations">8 · Limitations — what "AI" is not</h2>
+  <div class="callout limit">
+    <div class="callout-label">Guardrails to carry forward</div>
+    <ul>
+      <li><strong>No general intelligence today.</strong> Every system in real use is <em>narrow</em> — brilliant at one task, helpless outside it. "Artificial General Intelligence" remains a research aspiration, not a product.</li>
+      <li><strong>Learning ≠ understanding.</strong> An ML model captures statistical patterns in data. It has no concept of meaning, causation, or truth unless we engineer that in. It will happily learn our biases and spurious correlations.</li>
+      <li><strong>Data quality is destiny.</strong> Because the rules come from data, garbage data yields a confident, garbage model. Much of real ML work is data work, not algorithm work.</li>
+      <li><strong>Interpretability varies.</strong> A decision tree explains itself; a deep network largely doesn't. Choosing a model is partly a choice about how much you need to <em>trust and audit</em> it — a recurring theme in this course.</li>
+    </ul>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="connection">How this connects to the next lesson</h2>
+  <div class="callout connect">
+    <div class="callout-label">Bridge to Lesson 2</div>
+    <p>You now have the map: four approaches, and ML as the one that learns from data. In <strong>Lesson 2 — How Intelligent Systems Are Built</strong>, we zoom into approaches A and B (search and symbolic logic) just enough to feel <em>why</em> they hit walls — the very walls that made the statistical, learning-based approach (C) win. Understanding what ML replaced makes ML itself far less mysterious. After that, Lesson 3 sharpens the AI/ML/DL boundary, and Lesson 4 opens the machine we'll spend the rest of the course building.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="exercises">Exercises &amp; reflection</h2>
+  <p>No coding yet — these are calibration questions. If you can answer them in a sentence or two, you're ready to move on.</p>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 1 · Classify the approach</div>
+    <p>For each system, name which of the four approaches (Search, Symbolic/Logic, Statistical Learning, Bio-inspired) it primarily uses — some use more than one:</p>
+    <ol>
+      <li>A GPS app finding the shortest route.</li>
+      <li>A spam filter that improves as you mark messages.</li>
+      <li>A tax-preparation program that applies the legal rulebook.</li>
+      <li>A program that plays chess by looking many moves ahead.</li>
+    </ol>
+    <details><summary>Show discussion</summary>
+      <div class="details-body">
+        <p>(1) Search/planning. (2) Statistical learning — it's ML, specifically supervised classification. (3) Symbolic/logic — a hand-coded rule base, an expert system. (4) Primarily search/planning; modern engines add a learned evaluation (statistical learning), so it's a hybrid — exactly the "intelligence is a composite" point.</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 2 · Fill in Mitchell's triple</div>
+    <p>Pick a task you'd like a machine to do (e.g. "predict apartment prices"). Write out its &lt;<span class="var">T</span> = task, <span class="var">P</span> = performance measure, <span class="var">E</span> = experience&gt;. If you can't name the experience <em>E</em> as concrete data, the problem isn't yet an ML problem — reframe it until you can.</p>
+  </div>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 3 · The moving target</div>
+    <p>In one sentence, explain the "AI effect" to a non-technical friend, and give an everyday technology that was once considered AI but no longer is.</p>
+  </div>
+
+  <div class="callout intuition">
+    <div class="callout-label">One-paragraph summary to lock it in</div>
+    <p>AI is the engineering of systems that act to achieve goals on tasks we associate with intelligence. Because many such tasks resist explicit rules, the field's winning strategy became <em>learning the rules from data</em> — Machine Learning. ML is a strict subset of AI; Deep Learning is a strict subset of ML's neural-network family. This course lives entirely at the ML level (classical, statistical learning), which is both the historically robust core of the field and the necessary foundation for anything deeper.</p>
+  </div>
+
+  <nav class="lessonnav">
+    <a class="prev" href="../index.html">
+      <span class="dir">← Back</span>
+      <span class="ttl">Course Roadmap</span>
+    </a>
+    <a class="next" href="lesson-02.html">
+      <span class="dir">Next →</span>
+      <span class="ttl">Lesson 2 · How Intelligent Systems Are Built</span>
+    </a>
+  </nav>
+
+</main>
+
+<footer class="foot">
+  Lesson 1 of 29 · AI → Machine Learning · Understand the <em>why</em> before the <em>how</em>.
+  <span class="byline">&copy; 2026 <a href="https://www.linkedin.com/in/adda-missoum-a534a7319/">Missoum Hadi Adda</a> &middot; Licensed <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>, code <a href="https://opensource.org/license/mit">MIT</a> &middot; <a href="https://github.com/addahadi/ai-to-ml">Source</a> &middot; Built with <a href="https://claude.com/claude-code">Claude Code</a></span>
+  <img src="https://addahadi.goatcounter.com/count?p=/modules/lesson-01.html" alt="" width="1" height="1">
+</footer>
+
+</body>
+</html>

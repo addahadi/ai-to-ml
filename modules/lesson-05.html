@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 5 — Model, Parameters, and Error</title>
+<link rel="stylesheet" href="../assets/style.css">
+<meta name="description" content="The core vocabulary of learning — models, parameters, and error — the language every later lesson builds on.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="AI → Machine Learning">
+<meta property="og:title" content="Lesson 5 — Model, Parameters, and Error">
+<meta property="og:description" content="The core vocabulary of learning — models, parameters, and error — the language every later lesson builds on.">
+<meta property="og:url" content="https://addahadi.github.io/ai-to-ml/modules/lesson-05.html">
+<meta name="twitter:card" content="summary">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand-mark" href="../index.html">AI<span>→</span>ML</a>
+    <nav>
+      <a href="../index.html">Roadmap</a>
+      <a href="#model">Model</a>
+      <a href="#parameters">Parameters</a>
+      <a href="#error">Error</a>
+      <a href="#space">Parameter space</a>
+      <a href="#exercises">Exercises</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="crumb"><a href="../index.html">Roadmap</a> &nbsp;›&nbsp; Part II · The Machine Learning Mindset &nbsp;›&nbsp; Module 1 · Learning From Data</div>
+
+  <section class="hero">
+    <span class="eyebrow">Lesson 05 · Core concepts</span>
+    <h1>Model, Parameters, and Error</h1>
+    <p class="lead">Lesson 4 gave you the words in passing — model, parameters, error. Now we make them exact. These three ideas are the atoms of every algorithm in this course. Once you can point at each one precisely and say what changes it, "training a model" stops being a phrase and becomes a mechanism you understand.</p>
+    <div class="meta-row">
+      <span><b>Reading:</b> ~30 min</span>
+      <span><b>Prerequisites:</b> Lesson 4</span>
+      <span><b>Code:</b> pseudocode + hand-worked numbers</span>
+    </div>
+  </section>
+
+  <div class="callout why">
+    <div class="callout-label">Why these three words deserve a whole lesson</div>
+    <p>In Lesson 4 you saw the universal training loop: <em>predict, measure error, adjust, repeat.</em> Every word in that loop points at one of three things. The <strong>model</strong> is the thing that predicts. The <strong>parameters</strong> are the numbers that "adjust" changes. The <strong>error</strong> is what "measure" produces. Get these three crisp and the loop is no longer mysterious — it's just moving parameters to shrink error. <strong>By the end you'll be able to look at any model and answer three questions: what is fixed, what is learned, and what number are we trying to make small?</strong></p>
+  </div>
+
+  <div class="callout intuition">
+    <div class="callout-label">The same house dataset, carried forward</div>
+    <p>We keep the running example from Lesson 4 so the abstract terms always have something concrete to point at — <strong>predicting a house's sale price</strong>. The five rows again:</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Size (m²)</th><th>Bedrooms</th><th>Age (yrs)</th><th>Neighborhood</th><th>Sale price (€)</th></tr></thead>
+        <tbody>
+          <tr><td>60</td><td>2</td><td>30</td><td>East</td><td>180,000</td></tr>
+          <tr><td>85</td><td>3</td><td>12</td><td>Center</td><td>295,000</td></tr>
+          <tr><td>120</td><td>4</td><td>5</td><td>Center</td><td>430,000</td></tr>
+          <tr><td>45</td><td>1</td><td>40</td><td>West</td><td>132,000</td></tr>
+          <tr><td>100</td><td>3</td><td>8</td><td>East</td><td>350,000</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>To keep the math visible by hand, most of this lesson uses <em>one feature</em> — size — and the simplest model there is: a straight line.</p>
+  </div>
+
+  <h2 id="learning-goals">What this lesson delivers</h2>
+  <ul class="checklist">
+    <li>A precise definition of a <em>model</em> as a family of functions — and why "choosing a model" means choosing a shape, not an answer.</li>
+    <li>The clean split between <em>parameters</em> (learned) and <em>hyperparameters</em> (chosen by you).</li>
+    <li>What <em>error</em> means for one prediction, and how single errors combine into one number for the whole dataset.</li>
+    <li>The picture of <em>parameter space</em> — the landscape training walks across — which sets up loss (Lesson 6) and optimization (Lesson 7).</li>
+  </ul>
+
+  <!-- =================================================================== -->
+  <h2 id="model">1 · What a model really is</h2>
+
+  <p>Casually, "the model" means the finished predictor. But to understand training you need the sharper meaning: a model is a <strong>family of functions</strong> — a shape with empty slots. Training picks one specific member of that family by filling the slots with numbers.</p>
+
+  <div class="callout def">
+    <div class="callout-label">Model (precise)</div>
+    <div class="eq">A <strong>model</strong> is a function <span class="var">f(x ; θ)</span> whose form is fixed by you, but whose behavior depends on adjustable parameters <span class="var">θ</span>.</div>
+    <p>The semicolon matters: <span class="var">x</span> is the input you're given; <span class="var">θ</span> (theta) are the knobs training turns. Fix the form, and every choice of <span class="var">θ</span> gives a <em>different concrete function</em>. The model is the whole family; a <em>trained</em> model is one member of it.</p>
+  </div>
+
+  <div class="callout intuition">
+    <div class="callout-label">The clearest possible model: a line</div>
+    <p>Take just <em>size</em> as input and predict price. The simplest model is a straight line:</p>
+    <div class="eq">ŷ = f(size ; w, b) = <span class="var">w</span> · size + <span class="var">b</span></div>
+    <p>Here the <em>form</em> — "a line" — is fixed. The two slots <span class="var">w</span> (slope, €per m²) and <span class="var">b</span> (intercept, the base price) are the parameters. Pick <span class="var">w</span> = 3,000 and <span class="var">b</span> = 10,000 and you get one line; pick <span class="var">w</span> = 3,500 and <span class="var">b</span> = 0 and you get a different one. <strong>Every possible line is one member of this one model family.</strong> Training's job is to choose the member that fits the houses best.</p>
+  </div>
+
+  <div class="callout why">
+    <div class="callout-label">"Choosing a model" = choosing a shape, and shape is a bet</div>
+    <p>When you pick a line, you are betting that price rises <em>steadily</em> with size — the same €per m² whether a flat is small or huge. That bet might be wrong: maybe the first few m² add little and large luxury homes jump in price. Choosing a richer shape — a curve (polynomial, Lesson 12), a tree (Lesson 16) — is choosing a different bet about how the world behaves. The model is your <em>assumption about the shape of the answer</em>; the data then fills in the details. This is why there is no single "best model": the right shape depends on the true pattern in the data.</p>
+  </div>
+
+  <p>The same idea scales straight up to all four features from the full table — just more slots:</p>
+  <div class="eq">ŷ = <span class="var">w₁</span>·size + <span class="var">w₂</span>·bedrooms + <span class="var">w₃</span>·age + <span class="var">w₄</span>·neighborhood + <span class="var">b</span></div>
+  <p>Same shape (a weighted sum, a line in higher dimensions), just five parameters instead of two. We'll return to the one-feature line because you can draw it and do its arithmetic by hand.</p>
+
+  <!-- =================================================================== -->
+  <h2 id="parameters">2 · Parameters vs hyperparameters</h2>
+
+  <p>Not every number in an ML system is learned. There are two kinds, and confusing them is one of the most common early mistakes. The distinction is simple: <strong>parameters are found by training; hyperparameters are set by you before training starts.</strong></p>
+
+  <div class="frame">
+    <div class="frame-row"><div class="n">1</div><div class="c"><b>Parameters (<span class="var">θ</span>) — learned</b><span> — the numbers <em>inside</em> the model that training adjusts to fit the data. In our line, <span class="var">w</span> and <span class="var">b</span>. You never set these by hand; the whole point of training is to discover them. A trained model <em>is</em> a specific set of parameter values.</span></div></div>
+    <div class="frame-row"><div class="n">2</div><div class="c"><b>Hyperparameters — chosen</b><span> — the settings that control the <em>model's shape or the training process itself</em>, fixed before training. Examples: the degree of a polynomial (line vs curve), how deep a decision tree may grow (Lesson 16), the learning rate of gradient descent (Lesson 7). Training does not touch these — you do, by trying values and comparing (Lesson 21).</span></div></div>
+  </div>
+
+  <div class="callout math">
+    <div class="callout-label">A test you can always apply</div>
+    <p>Ask: <em>"Does the training procedure change this number by looking at the data?"</em> If yes, it's a <strong>parameter</strong>. If you must fix it before training can even begin, it's a <strong>hyperparameter</strong>. In our line: <span class="var">w</span> and <span class="var">b</span> are set by fitting the houses → parameters. "Use a straight line rather than a degree-3 curve" is a decision you made first → a hyperparameter.</p>
+  </div>
+
+  <div class="callout practice">
+    <div class="callout-label">Worked example: count the parameters</div>
+    <p>How many parameters does each model have?</p>
+    <ul>
+      <li><strong>One-feature line</strong> <span class="var">w·size + b</span> → <em>2</em> (<span class="var">w</span>, <span class="var">b</span>).</li>
+      <li><strong>Four-feature linear model</strong> → <em>5</em> (four weights + one intercept).</li>
+      <li><strong>Degree-2 curve on one feature</strong> <span class="var">a·size² + b·size + c</span> → <em>3</em> (<span class="var">a, b, c</span>) — and "degree = 2" is the <em>hyperparameter</em> that decided there'd be three.</li>
+    </ul>
+    <p>Notice the pattern: the hyperparameter (the shape/degree) <em>determines how many parameters exist</em>. You choose the shape; the shape sets the number of slots; training fills them.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="error">3 · Error — from one house to one number</h2>
+
+  <p>A model with some parameters makes predictions. Those predictions are wrong by some amount. "Error" is how we make "wrong by some amount" into a number we can push down. Build it in two steps: first the error on a <em>single</em> prediction, then how to combine all of them into <em>one</em> score for the whole dataset.</p>
+
+  <h3>Step 1 — error on a single prediction (the residual)</h3>
+  <div class="callout def">
+    <div class="callout-label">Residual</div>
+    <div class="eq">residual = <span class="var">y</span> − <span class="var">ŷ</span>  &nbsp;=&nbsp; (true value) − (predicted value)</div>
+    <p>For one house it's just the gap between reality and the model's guess. Positive means the model under-predicted; negative means it over-predicted. This single number is the raw material of <em>all</em> error measurement.</p>
+  </div>
+
+  <div class="callout practice">
+    <div class="callout-label">Worked example: residuals for a specific line</div>
+    <p>Take the one-feature line <span class="var">ŷ = 3,000·size + 20,000</span> and run it on three houses from the table:</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Size</th><th>True price y</th><th>Prediction ŷ = 3000·size + 20000</th><th>Residual y − ŷ</th></tr></thead>
+        <tbody>
+          <tr><td>60</td><td>180,000</td><td>200,000</td><td>−20,000</td></tr>
+          <tr><td>85</td><td>295,000</td><td>275,000</td><td>+20,000</td></tr>
+          <tr><td>120</td><td>430,000</td><td>380,000</td><td>+50,000</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Three gaps: the model over-prices the small house, under-prices the two larger ones. Now — how do we turn <em>these three numbers</em> into one score for "how good is this line?"</p>
+  </div>
+
+  <h3>Step 2 — combine residuals into one dataset score</h3>
+  <p>We can't just add the residuals: the −20,000 and +20,000 would cancel, making a badly-wrong line look perfect. We need every error to count as a cost regardless of sign. The standard fix is to <strong>square each residual</strong> (squares are always positive) and take the average. That's the <strong>Mean Squared Error</strong>.</p>
+
+  <div class="callout def">
+    <div class="callout-label">Mean Squared Error (MSE)</div>
+    <div class="eq">MSE = (1 / n) · Σ (<span class="var">yᵢ</span> − <span class="var">ŷᵢ</span>)²</div>
+    <p><span class="var">n</span> = number of examples; the Σ ("sum") runs over all of them. In words: <em>square every residual, then average.</em> One number that summarizes how wrong the whole model is. Lower is better; zero means every prediction is exact.</p>
+  </div>
+
+  <div class="callout practice">
+    <div class="callout-label">Worked example: the MSE of that line</div>
+    <p>Using the three residuals above (−20,000, +20,000, +50,000):</p>
+    <div class="eq">MSE = ( (−20,000)² + (20,000)² + (50,000)² ) / 3 = ( 0.4 + 0.4 + 2.5 ) ×10⁹ / 3 ≈ <strong>1.1 ×10⁹</strong></div>
+    <p>The number itself is huge and in "euros-squared," which is hard to feel. That's why we often report its square root, the <strong>Root Mean Squared Error</strong>: √(1.1×10⁹) ≈ <strong>€33,000</strong> — an average-sized miss, back in real euros. The raw MSE isn't meant to be intuitive; it's meant to be <em>minimized</em>. What matters is that a <em>better</em> line gives a smaller MSE.</p>
+  </div>
+
+  <div class="callout why">
+    <div class="callout-label">Why square, and not just take absolute value?</div>
+    <p>Absolute value (|residual|) also kills signs and gives a perfectly valid error measure (Mean Absolute Error). Squaring is preferred for two reasons. First, it <strong>punishes big misses much harder</strong> than small ones — a €50,000 miss counts far more than five €10,000 misses — which usually matches what we want. Second, and decisively for the next two lessons, the squared function is <strong>smooth</strong>: it has a clean, everywhere-defined slope, which is exactly what the optimizer in Lesson 7 needs to know which way to nudge the parameters. This choice of "how to measure wrong" has a name — the <em>loss function</em> — and it's the entire subject of Lesson 6.</p>
+  </div>
+
+  <div class="callout math">
+    <div class="callout-label">The key mental move: error is a function of the parameters</div>
+    <p>Here is the idea that unlocks everything ahead. The data is fixed. So once you write MSE out, the <em>only</em> things that can change it are the parameters. That means:</p>
+    <div class="eq">MSE is a function of <span class="var">w</span> and <span class="var">b</span> &nbsp;—&nbsp; write it <span class="var">E(w, b)</span>.</div>
+    <p>Different lines (different <span class="var">w, b</span>) → different total error. Training is nothing more than <strong>searching for the <span class="var">w, b</span> that make <span class="var">E(w, b)</span> smallest.</strong> The model gave us predictions; the error turned a whole model into a single score; now that score is a landscape we can descend.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="space">4 · Parameter space — the landscape training walks</h2>
+
+  <p>This is the picture to carry into the next two lessons. Because error is a function of the parameters, we can imagine a <em>map</em> where each location is a choice of parameters and the <em>height</em> at that location is the error there.</p>
+
+  <div class="callout intuition">
+    <div class="callout-label">The error landscape</div>
+    <p>Picture the two knobs <span class="var">w</span> and <span class="var">b</span> as the two directions on a flat floor (east–west, north–south). At every point on that floor, stack up the MSE that <em>that</em> pair of values produces as height. You now have a surface — a landscape of hills and valleys. A <strong>good model sits low</strong> (small error); a <strong>bad model sits high</strong>. Our line above (RMSE ≈ €33,000) is somewhere up a slope. Somewhere on that floor is the lowest point — the <span class="var">w, b</span> with the smallest possible error. <strong>Training is the act of walking downhill to find it.</strong></p>
+  </div>
+
+  <div class="callout math">
+    <div class="callout-label">Why the squared-error landscape is friendly</div>
+    <p>For a linear model with MSE, this landscape is a single smooth bowl — one valley, no false bottoms to get stuck in. That's a gift: wherever you start, downhill always leads to <em>the</em> answer. Not every model gives such a kind landscape (deep trees and, later, neural nets have rugged terrain), but linear regression's bowl is why it's the first algorithm we build — you can literally roll to the bottom. The rolling procedure has a name, <em>gradient descent</em>, and it's Lesson 7.</p>
+  </div>
+
+  <p>So the three words connect into one sentence you should be able to say from memory:</p>
+  <div class="callout def">
+    <div class="callout-label">The whole lesson in one line</div>
+    <div class="eq">A <strong>model</strong> proposes predictions from <strong>parameters</strong>; an <strong>error</strong> function turns those parameters into a single height on a landscape; <em>training walks that landscape downhill.</em></div>
+  </div>
+
+  <h3>Where Lessons 6 and 7 plug in</h3>
+  <p>You now have the shape of the whole training machine, with two slots left to fill — and they are precisely the next two lessons:</p>
+
+  <pre><code><span class="tok-c"># The training loop from Lesson 4, now annotated with today's words</span>
+w, b = init_parameters()               <span class="tok-c"># start somewhere on the landscape</span>
+<span class="tok-k">for</span> step <span class="tok-k">in</span> range(num_steps):
+    y_hat = w * size + b               <span class="tok-c"># the MODEL predicts (this lesson)</span>
+    E     = mean((y - y_hat) ** <span class="tok-n">2</span>)     <span class="tok-c"># the ERROR / loss = our height (Lesson 6)</span>
+    grad  = slope_of_E(w, b)           <span class="tok-c"># which way is downhill (Lesson 7)</span>
+    w, b  = step_downhill(w, b, grad)  <span class="tok-c"># adjust the PARAMETERS (this lesson)</span>
+<span class="tok-c"># stop when E stops shrinking -> we're at the bottom of the bowl</span></code></pre>
+
+  <p>Three of the four lines are things you now understand exactly. Lesson 6 makes <code>E</code> rigorous (what "loss" can be, and why); Lesson 7 makes <code>slope_of_E</code> and <code>step_downhill</code> real (gradient descent). After that, every algorithm in the course is a variation on this template.</p>
+
+  <!-- =================================================================== -->
+  <h2 id="limitations">5 · Limitations — what to keep honest about</h2>
+  <div class="callout limit">
+    <div class="callout-label">Guardrails to carry forward</div>
+    <ul>
+      <li><strong>The model can only be as good as its shape allows.</strong> If price truly curves with size, no <span class="var">w, b</span> for a straight line will ever fit well — the lowest point of that bowl is still a bad line. Underfitting is a wrong-shape problem, not a training problem.</li>
+      <li><strong>Low training error is not the goal — low <em>unseen</em> error is.</strong> A shape flexible enough can drive training error to zero by contorting through every point, yet fail on new houses. This is overfitting (Lesson 13); the error landscape here is measured on training data only.</li>
+      <li><strong>Squared error is a choice, not a law.</strong> It punishes big misses hard and is swayed by outliers (one mistyped €0 house can dominate the MSE). Sometimes absolute error or another loss fits the goal better — the reason Lesson 6 exists.</li>
+      <li><strong>More parameters ≠ better.</strong> Adding slots lets a model fit more, but also memorize more. The count of parameters is a dial with two edges, revisited in the bias–variance trade-off (Lesson 13).</li>
+    </ul>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="connection">How this connects to the next lesson</h2>
+  <div class="callout connect">
+    <div class="callout-label">Bridge to Lesson 6 — Loss functions</div>
+    <p>You've now got the three atoms: a <strong>model</strong> (a shape with slots), its <strong>parameters</strong> (the numbers training fills), and <strong>error</strong> (one score that turns a whole model into a height on a landscape). We used squared error as a stand-in for "how wrong," but glossed over <em>why that formula</em> and what other choices exist. <strong>Lesson 6 — Loss functions</strong> makes the <code>E</code> box exact: what a loss function must do, the standard ones for regression and classification, and how the choice of loss quietly shapes what your model ends up caring about. Then Lesson 7 gives us the way to actually descend the landscape it defines.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="exercises">Exercises &amp; reflection</h2>
+  <p>Pen-and-paper still — the arithmetic here is the whole point, because it makes the machinery physical.</p>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 1 · Parameter or hyperparameter?</div>
+    <p>Label each as a <em>parameter</em> (learned) or <em>hyperparameter</em> (chosen):</p>
+    <ol>
+      <li>The slope <span class="var">w</span> in <span class="var">ŷ = w·size + b</span>.</li>
+      <li>The decision to use a degree-3 polynomial instead of a line.</li>
+      <li>The maximum depth a decision tree is allowed to reach.</li>
+      <li>The intercept <span class="var">b</span>.</li>
+    </ol>
+    <details><summary>Show discussion</summary>
+      <div class="details-body">
+        <p>(1) Parameter — training sets it from the data. (2) Hyperparameter — you fix the shape before training. (3) Hyperparameter — a limit you impose on the training process. (4) Parameter. The test each time: <em>does training change it by looking at the data?</em> Yes → parameter.</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 2 · Compute residuals and MSE by hand</div>
+    <p>Use the line <span class="var">ŷ = 3,500·size − 30,000</span> on the same three houses (sizes 60, 85, 120; true prices 180,000 / 295,000 / 430,000). Compute each prediction, each residual, and the MSE. Is this line better or worse than the one in the lesson (RMSE ≈ €33,000)? Report your answer as an RMSE for a fair comparison.</p>
+    <details><summary>Show solution</summary>
+      <div class="details-body">
+        <p>Predictions: 3,500·60 − 30,000 = 180,000; 3,500·85 − 30,000 = 267,500; 3,500·120 − 30,000 = 390,000. Residuals (y − ŷ): 0; +27,500; +40,000. MSE = (0² + 27,500² + 40,000²)/3 = (0 + 756.25M + 1,600M)/3 ≈ 785M. RMSE = √785,000,000 ≈ <strong>€28,000</strong>. That's lower than €33,000, so this line is <em>better</em> — you've just compared two members of the same model family by their height on the error landscape, which is exactly what training does automatically.</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 3 · Why squaring changes the winner</div>
+    <p>Two models make these residuals on four houses. Model A: (+10k, −10k, +10k, −10k). Model B: (0, 0, 0, +25k). Which has lower <em>total absolute error</em>? Which has lower <em>MSE</em>? Explain in one sentence why squaring can crown a different winner than absolute error does.</p>
+    <details><summary>Show solution</summary>
+      <div class="details-body">
+        <p>Absolute: A = 40k, B = 25k → B wins. Squared sums: A = 4·(10k)² = 400M; B = (25k)² = 625M → A wins. Squaring magnifies B's single large miss more than it penalizes A's many small ones, so the choice of error measure literally changes which model you'd pick — the reason loss selection (Lesson 6) is a real decision, not a formality.</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 4 · Describe the landscape</div>
+    <p>In two or three sentences, explain what a single point on the <span class="var">(w, b)</span> error landscape represents, what its height means, and what "training" is doing on that landscape. Use the words <em>parameters</em>, <em>error</em>, and <em>downhill</em>.</p>
+  </div>
+
+  <div class="callout intuition">
+    <div class="callout-label">One-paragraph summary to lock it in</div>
+    <p>A <strong>model</strong> is a family of functions — a fixed shape (like a line <span class="var">w·size + b</span>) with empty slots; choosing the model is choosing a bet about the shape of the answer. The slots come in two kinds: <strong>parameters</strong> (<span class="var">w, b</span>), which training learns from data, and <strong>hyperparameters</strong> (like the degree of the shape), which you fix beforehand and which decide how many parameters exist. To judge a set of parameters we measure <strong>error</strong>: the residual <span class="var">y − ŷ</span> for one house, combined across all houses into a single score such as Mean Squared Error. Because the data is fixed, that error is a function of the parameters alone — a landscape whose height is the error and whose lowest point is the best model. Training is walking that landscape downhill, and the next two lessons fill in what "downhill" means: the loss (Lesson 6) that defines the height, and the optimization (Lesson 7) that takes the steps.</p>
+  </div>
+
+  <nav class="lessonnav">
+    <a class="prev" href="lesson-04.html">
+      <span class="dir">← Previous</span>
+      <span class="ttl">Lesson 4 · What Is Machine Learning?</span>
+    </a>
+    <a class="next" href="lesson-06.html">
+      <span class="dir">Next →</span>
+      <span class="ttl">Lesson 6 · Loss Functions</span>
+    </a>
+  </nav>
+
+</main>
+
+<footer class="foot">
+  Lesson 5 of 29 · AI → Machine Learning · Understand the <em>why</em> before the <em>how</em>.
+  <span class="byline">&copy; 2026 <a href="https://www.linkedin.com/in/adda-missoum-a534a7319/">Missoum Hadi Adda</a> &middot; Licensed <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>, code <a href="https://opensource.org/license/mit">MIT</a> &middot; <a href="https://github.com/addahadi/ai-to-ml">Source</a> &middot; Built with <a href="https://claude.com/claude-code">Claude Code</a></span>
+  <img src="https://addahadi.goatcounter.com/count?p=/modules/lesson-05.html" alt="" width="1" height="1">
+</footer>
+
+</body>
+</html>

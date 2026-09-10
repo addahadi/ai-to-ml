@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 4 — What Is Machine Learning?</title>
+<link rel="stylesheet" href="../assets/style.css">
+<meta name="description" content="What machine learning is: supervised, unsupervised, and reinforcement learning, and the end-to-end ML workflow.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="AI → Machine Learning">
+<meta property="og:title" content="Lesson 4 — What Is Machine Learning?">
+<meta property="og:description" content="What machine learning is: supervised, unsupervised, and reinforcement learning, and the end-to-end ML workflow.">
+<meta property="og:url" content="https://addahadi.github.io/ai-to-ml/modules/lesson-04.html">
+<meta name="twitter:card" content="summary">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand-mark" href="../index.html">AI<span>→</span>ML</a>
+    <nav>
+      <a href="../index.html">Roadmap</a>
+      <a href="#definition">Definition</a>
+      <a href="#vocab">Vocabulary</a>
+      <a href="#types">Types of learning</a>
+      <a href="#workflow">The workflow</a>
+      <a href="#exercises">Exercises</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="crumb"><a href="../index.html">Roadmap</a> &nbsp;›&nbsp; Part I · The AI Landscape &nbsp;›&nbsp; Module 0 · Orientation</div>
+
+  <section class="hero">
+    <span class="eyebrow">Lesson 04 · Foundations</span>
+    <h1>What Is Machine Learning?</h1>
+    <p class="lead">We've located Machine Learning on the map. Now we step inside it. What does it actually mean for a program to "learn," what <em>kinds</em> of learning exist, and what is the repeatable workflow that every algorithm in the rest of this course plugs into?</p>
+    <div class="meta-row">
+      <span><b>Reading:</b> ~30 min</span>
+      <span><b>Prerequisites:</b> Lessons 1–3</span>
+      <span><b>Code:</b> a tiny bit of pseudocode — the machinery starts here</span>
+    </div>
+  </section>
+
+  <div class="callout why">
+    <div class="callout-label">Why this is the hinge lesson of the whole course</div>
+    <p>Lessons 1–3 were the map. This is the machine. Every remaining lesson — Linear Regression, k-NN, Decision Trees, k-Means, all of it — is a specific instance of the two ideas you'll meet here: a <strong>type of learning</strong> (what experience the model gets) and the <strong>ML workflow</strong> (the pipeline from raw data to a trusted model). Get this lesson solid and every later algorithm becomes "fill in the blanks of a template you already know." <strong>By the end you'll be able to take any new problem and say what type of ML it is and what the end-to-end steps to solve it would be.</strong></p>
+  </div>
+
+  <div class="callout intuition">
+    <div class="callout-label">One example we'll carry through the whole lesson</div>
+    <p>Abstractions blur; a running example keeps us honest. Throughout this lesson we'll use one small, concrete dataset — <strong>predicting a house's sale price from a few of its properties</strong> — and revisit it at every stage. Here are five rows of it:</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Size (m²)</th><th>Bedrooms</th><th>Age (yrs)</th><th>Neighborhood</th><th>Sale price (€)</th></tr></thead>
+        <tbody>
+          <tr><td>60</td><td>2</td><td>30</td><td>East</td><td>180,000</td></tr>
+          <tr><td>85</td><td>3</td><td>12</td><td>Center</td><td>295,000</td></tr>
+          <tr><td>120</td><td>4</td><td>5</td><td>Center</td><td>430,000</td></tr>
+          <tr><td>45</td><td>1</td><td>40</td><td>West</td><td>132,000</td></tr>
+          <tr><td>100</td><td>3</td><td>8</td><td>East</td><td>350,000</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Keep this table in mind. We'll point at its columns to define every term below.</p>
+  </div>
+
+  <h2 id="learning-goals">What this lesson delivers</h2>
+  <ul class="checklist">
+    <li>A precise definition of "learning" for a machine — and how it differs from ordinary programming.</li>
+    <li>The three (really four) types of learning, with the question each one answers and a worked example of each.</li>
+    <li>The supervised split — regression vs classification — that organizes Parts III–IV.</li>
+    <li>The core vocabulary — features, labels, model, parameters, training — grounded in the house dataset.</li>
+    <li>The end-to-end ML workflow, walked step by step on a real problem.</li>
+  </ul>
+
+  <!-- =================================================================== -->
+  <h2 id="definition">1 · What "learning" means for a machine</h2>
+
+  <p>The word "learning" invites mysticism, so let's kill the mysticism immediately. In Lesson 1 we met the definition that strips it bare — worth restating because it is the spine of everything below:</p>
+
+  <div class="callout def">
+    <div class="callout-label">Mitchell's definition (1997)</div>
+    <div class="eq">A computer program <strong>learns</strong> from experience <span class="var">E</span> with respect to task <span class="var">T</span> and performance measure <span class="var">P</span>, if its performance at <span class="var">T</span>, measured by <span class="var">P</span>, improves with <span class="var">E</span>.</div>
+    <p>No consciousness, no understanding — just measurable improvement on a task as it sees more data. "Learning" is <em>fitting a program to data so that a number goes up (or an error goes down).</em></p>
+  </div>
+
+  <div class="callout math">
+    <div class="callout-label">The triple, filled in for our house example</div>
+    <p>Mitchell's definition isn't decoration — you can instantiate it right now:</p>
+    <ul>
+      <li><span class="var">T</span> (task) = predict a house's sale price from its size, bedrooms, age, and neighborhood.</li>
+      <li><span class="var">P</span> (performance) = average euro error of the predictions on houses the model has never seen.</li>
+      <li><span class="var">E</span> (experience) = a table of past sales, like the five rows above — but with thousands of rows.</li>
+    </ul>
+    <p>If the average error shrinks as we feed it more past sales, the program is <em>learning</em>. That's the whole claim, made measurable.</p>
+  </div>
+
+  <p>Contrast the two paradigms directly, because the inversion is the entire point of the field:</p>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th></th><th>Classical programming</th><th>Machine Learning</th></tr></thead>
+      <tbody>
+        <tr><td><b>You write</b></td><td>The rules (the algorithm)</td><td>A learning procedure + example data</td></tr>
+        <tr><td><b>Inputs</b></td><td>Data + rules</td><td>Data + desired answers</td></tr>
+        <tr><td><b>Output</b></td><td>Answers</td><td>The rules (a trained model)</td></tr>
+        <tr><td><b>When to use</b></td><td>You can state the rules</td><td>You can't state the rules, but you have examples</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout intuition">
+    <div class="callout-label">Engineer's translation — on the house problem</div>
+    <p>The classical approach would have you <em>write the pricing formula yourself</em>: maybe <code>price = 3000 × size + 10000 × bedrooms − 500 × age</code>. But where did those coefficients come from? You'd be guessing. The ML approach refuses to guess: you hand it the table of past sales (inputs <em>and</em> the prices) and it <em>discovers</em> the coefficients that best reproduce them. In classical programming, <code>rules + data → answers</code>. In ML you flip two boxes: <code>data + answers → rules</code>. Training is <em>program synthesis by numerical optimization.</em></p>
+  </div>
+
+  <p>That phrase — <em>generalizes to new inputs</em> — is the whole game, and it deserves its own callout because it's the difference between learning and memorizing.</p>
+
+  <div class="callout why">
+    <div class="callout-label">The one thing ML is really trying to do: generalize</div>
+    <p>Any program can memorize a lookup table of the training examples and score perfectly on them. <em>Example:</em> a model that simply stores "60 m², East → €180,000" answers perfectly for that exact house and is useless the moment a 62 m² house in the East shows up — a value it has never seen. That's memorizing, not learning. The goal of ML is <strong>generalization</strong>: performing well on data it has <em>never seen</em>. Everything hard about the field (overfitting, validation, regularization — Parts III and V) exists to serve this one goal. Keep asking, of every technique: <em>"how does this help the model generalize rather than memorize?"</em></p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="vocab">2 · The vocabulary you'll use in every remaining lesson</h2>
+
+  <p>Before the types and the workflow, lock down five words. Every algorithm reuses them, so we define them once — and point each one at a column of the house table.</p>
+
+  <div class="frame">
+    <div class="frame-row"><div class="n">1</div><div class="c"><b>Features (inputs, <span class="var">X</span>)</b><span> — the measured properties you feed the model, one row per example, one column per property. In our table: <em>size, bedrooms, age, neighborhood</em> — the four leftmost columns. Choosing and shaping these is <em>feature engineering</em> (Lesson 27).</span></div></div>
+    <div class="frame-row"><div class="n">2</div><div class="c"><b>Label / target (output, <span class="var">y</span>)</b><span> — the answer you want to predict. Here, the <em>sale price</em> column. Present in supervised learning; absent in unsupervised.</span></div></div>
+    <div class="frame-row"><div class="n">3</div><div class="c"><b>Model</b><span> — the parameterized function <span class="var">f</span> that maps features to a prediction: <span class="var">ŷ = f(X)</span>. Choosing a model means choosing the <em>form</em> of <span class="var">f</span>. For houses we might pick a line: <span class="var">price = w₁·size + w₂·bedrooms + w₃·age + b</span>.</span></div></div>
+    <div class="frame-row"><div class="n">4</div><div class="c"><b>Parameters (weights)</b><span> — the tunable numbers inside <span class="var">f</span> that training adjusts. In that formula, <span class="var">w₁, w₂, w₃</span> and <span class="var">b</span>. Learning <em>is</em> finding good values for them — e.g. discovering <span class="var">w₁ ≈ 3,100 €/m²</span>.</span></div></div>
+    <div class="frame-row"><div class="n">5</div><div class="c"><b>Training</b><span> — the procedure that searches for parameter values which minimize error on the data, measured by a <em>loss function</em> (Lesson 6) and driven by <em>optimization</em> (Lesson 7).</span></div></div>
+  </div>
+
+  <div class="callout practice">
+    <div class="callout-label">Worked example: features, prediction, and error in numbers</div>
+    <p>Suppose training landed on the model <span class="var">price = 3,100·size + 8,000·bedrooms − 600·age + 5,000</span>. Take the third house in our table (120 m², 4 bedrooms, 5 years old):</p>
+    <div class="eq">ŷ = 3,100·(120) + 8,000·(4) − 600·(5) + 5,000 = 372,000 + 32,000 − 3,000 + 5,000 = <strong>€406,000</strong></div>
+    <p>The <em>actual</em> price was €430,000, so this prediction is off by €24,000. That gap — the <strong>error</strong> — is exactly what training tries to make small across <em>all</em> rows at once. Every algorithm in this course is, at heart, a smarter way of shrinking that gap.</p>
+  </div>
+
+  <div class="callout math">
+    <div class="callout-label">The whole of supervised ML in one line</div>
+    <p>Strip away the specifics and every supervised algorithm is doing this:</p>
+    <div class="eq">find parameters of <span class="var">f</span> such that <span class="var">f(X)</span> ≈ <span class="var">y</span> on training data — <em>and still ≈ y on unseen data.</em></div>
+    <p>The models differ only in the <em>shape</em> of <span class="var">f</span> and <em>how</em> we search for its parameters. That's it. That's the course.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="types">3 · The types of learning</h2>
+
+  <p>Machine Learning problems divide by <strong>what kind of experience the system learns from</strong> — the <span class="var">E</span> in Mitchell's triple. There are three canonical types (plus one important in-between), and each answers a different question. We'll give each a concrete example built from the same real-estate world, so the differences are unmistakable.</p>
+
+  <div class="frame">
+    <div class="frame-row"><div class="n">A</div><div class="c"><b>Supervised learning</b><span> — the data has inputs <em>and</em> correct answers (labels). <em>Question:</em> "Given labeled examples, what's the answer for this new case?" <em>Example:</em> our house table — features plus the known sale price. The model learns to price a new listing. <strong>Parts III &amp; IV — the bulk of this course.</strong></span></div></div>
+    <div class="frame-row"><div class="n">B</div><div class="c"><b>Unsupervised learning</b><span> — the data has inputs only, no answers. <em>Question:</em> "What natural structure is in this data?" <em>Example:</em> the same houses <em>with the price column removed</em> — group them into "types of property" (small old flats, large new family homes…) that nobody labeled in advance. <strong>Part VII — k-Means, PCA.</strong></span></div></div>
+    <div class="frame-row"><div class="n">C</div><div class="c"><b>Reinforcement learning</b><span> — an agent acts in an environment and gets <em>rewards</em>; it learns a strategy by trial and error. <em>Question:</em> "What sequence of actions maximizes long-term reward?" <em>Example:</em> an agent that repeatedly sets a listing price, observes whether the house sells and for how much, and adjusts its pricing strategy over many sales. <strong>Context only — out of scope.</strong></span></div></div>
+    <div class="frame-row"><div class="n">D</div><div class="c"><b>Semi-supervised / self-supervised</b><span> — a little labeled data plus a lot of unlabeled data, or labels manufactured from the data itself. <em>Question:</em> "How do I learn when labels are scarce or expensive?" <em>Example:</em> 200 houses with verified sale prices and 50,000 listings with none — use the huge unlabeled set to learn structure, the small labeled set to anchor prices. The engine behind modern LLMs, mentioned for completeness.</span></div></div>
+  </div>
+
+  <div class="callout intuition">
+    <div class="callout-label">A one-question decision tree for the type</div>
+    <p><strong>Do you have labeled answers to learn from?</strong> Yes → <em>supervised</em>. No, just raw data to explore → <em>unsupervised</em>. No labels, but an environment that pays out rewards for actions → <em>reinforcement</em>. The single most common beginner mistake is trying to force an unsupervised problem (no labels) into a supervised algorithm. Identify the type <em>first</em>; it determines every downstream choice.</p>
+  </div>
+
+  <h3>The supervised split: regression vs classification</h3>
+  <p>Because supervised learning is most of the course, it gets its own subdivision — decided entirely by <em>what kind of thing the label is</em>.</p>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th></th><th>Regression</th><th>Classification</th></tr></thead>
+      <tbody>
+        <tr><td><b>Label is…</b></td><td>a continuous number</td><td>a category / class</td></tr>
+        <tr><td><b>Answers…</b></td><td>"how much / how many?"</td><td>"which one / is it?"</td></tr>
+        <tr><td><b>House-data version</b></td><td>predict the <em>sale price</em> (€430,000)</td><td>predict "will it sell within 30 days?" (yes / no)</td></tr>
+        <tr><td><b>Other examples</b></td><td>temperature, demand, salary</td><td>spam/not, disease type, digit 0–9</td></tr>
+        <tr><td><b>Course home</b></td><td>Part III (Lessons 10–13)</td><td>Part IV (Lessons 14–18)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout practice">
+    <div class="callout-label">Watch the trap: the label's type, not the feature's</div>
+    <p><em>Example:</em> "predict the number of stars (1–5) a review gets." It looks numeric, but the answer is one of five discrete categories, so it's usually treated as <em>classification</em> (or its cousin, ordinal). Contrast: "predict a house's price" is genuinely continuous — €406,001 and €406,002 are both valid and meaningfully close — so it's regression. Always ask what the <em>output</em> is, and whether the distances between output values are meaningful.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="workflow">4 · The Machine Learning workflow</h2>
+
+  <p>Here is the payoff of the lesson: the repeatable pipeline that turns a business problem into a trustworthy model. Every project follows this loop, and every remaining lesson is a deep dive into one stage. We'll state each step <em>and</em> walk it on a concrete brief:</p>
+
+  <div class="callout def">
+    <div class="callout-label">The brief we'll solve</div>
+    <p>A real-estate agency wants a tool that suggests a listing price for a new house from its size, bedrooms, age, and neighborhood. They have a spreadsheet of 5,000 past sales. Let's walk the eight steps on exactly this.</p>
+  </div>
+
+  <div class="frame">
+    <div class="frame-row"><div class="n">1</div><div class="c"><b>Frame the problem</b><span> — <em>Our brief:</em> <span class="var">T</span> = predict sale price; <span class="var">P</span> = average euro error on unseen houses; <span class="var">E</span> = the 5,000-row spreadsheet. Label is a continuous number → <strong>supervised regression.</strong> This decision alone rules out classification algorithms and metrics.</span></div></div>
+    <div class="frame-row"><div class="n">2</div><div class="c"><b>Collect &amp; explore data</b><span> — <em>Our brief:</em> load the spreadsheet, plot price vs size, and notice three rows list a price of €0 (data-entry errors) and some ages are blank. (Lesson 8 — Pandas/Matplotlib.)</span></div></div>
+    <div class="frame-row"><div class="n">3</div><div class="c"><b>Prepare data &amp; engineer features</b><span> — <em>Our brief:</em> drop the €0 rows, fill missing ages with the median, turn "Neighborhood" text into numeric columns (one-hot: is_East, is_West, is_Center), and add a derived feature <em>price-relevant</em> like rooms-per-m². Usually the majority of the real work. (Lessons 12, 27.)</span></div></div>
+    <div class="frame-row"><div class="n">4</div><div class="c"><b>Split the data</b><span> — <em>Our brief:</em> randomly set aside 1,000 houses as a test set (and some for validation) <em>before</em> training, so we measure on sales the model never saw. Peeking here causes data leakage. (Lesson 19.)</span></div></div>
+    <div class="frame-row"><div class="n">5</div><div class="c"><b>Choose a model &amp; train it</b><span> — <em>Our brief:</em> start with Linear Regression, fit its weights on the 4,000 training houses by minimizing squared euro error. (Lessons 5–7, and every algorithm lesson.)</span></div></div>
+    <div class="frame-row"><div class="n">6</div><div class="c"><b>Evaluate</b><span> — <em>Our brief:</em> on the held-out 1,000 houses, the average error is €31,000. Is that good enough for the agency? Compare against a dumb baseline ("always predict the average price") to know. (Lessons 13, 20.)</span></div></div>
+    <div class="frame-row"><div class="n">7</div><div class="c"><b>Tune &amp; select</b><span> — <em>Our brief:</em> try polynomial features and a Decision Tree; the tree lowers error to €26,000. Adjust hyperparameters, compare, and loop back if needed. (Lesson 21.)</span></div></div>
+    <div class="frame-row"><div class="n">8</div><div class="c"><b>Deploy &amp; monitor</b><span> — <em>Our brief:</em> ship the pricing tool, then watch it — if the market heats up next year, yesterday's model will systematically under-price and errors will creep up, sending you back to step 2 with fresh sales.</span></div></div>
+  </div>
+
+  <div class="callout why">
+    <div class="callout-label">It's a loop, not a line</div>
+    <p>The numbering suggests a straight march, but real ML is a <em>cycle</em>. In our brief, the disappointing €31,000 error at step 6 pushed us back to step 3 (better features) and step 5 (a different model). Drift in production (step 8) will push us back to step 2. <strong>Notice how few of the eight steps are "train the model."</strong> The algorithm is one box; the discipline around it is the other seven — and that discipline is what separates a trustworthy tool from a demo.</p>
+  </div>
+
+  <div class="callout intuition">
+    <div class="callout-label">Where each Part of this course lives on the loop</div>
+    <p>Parts II (concepts &amp; tools) and the algorithm Parts III/IV/VI/VII all deepen <strong>steps 3–5</strong> (prepare, choose, train). Part V (evaluation) is <strong>steps 4, 6, 7</strong>. Part VIII (practical ML &amp; capstone) walks the <em>entire</em> loop end-to-end — much like the house brief above. You now have the skeleton every later lesson hangs on.</p>
+  </div>
+
+  <h3>The shape of "training," in eight lines</h3>
+  <p>No real algorithm yet — but so the word "training" isn't abstract, here is the pattern almost every supervised learner in this course will follow. Read it as the machine repeatedly re-pricing our 4,000 houses and nudging its weights toward the true prices:</p>
+
+  <pre><code><span class="tok-c"># The universal training loop, in spirit</span>
+model = init_parameters()              <span class="tok-c"># start with a guess, e.g. all weights = 0</span>
+<span class="tok-k">for</span> step <span class="tok-k">in</span> range(num_steps):
+    predictions = model.predict(X_train)          <span class="tok-c"># its price for every house right now</span>
+    error       = loss(predictions, y_train)      <span class="tok-c"># avg gap vs true prices (Lesson 6)</span>
+    gradient    = d_loss_d_parameters(error)       <span class="tok-c"># which way reduces the gap (Lesson 7)</span>
+    model       = update(model, gradient)          <span class="tok-c"># nudge each weight that way</span>
+<span class="tok-c"># repeat until the error stops improving → the model has "learned"</span></code></pre>
+
+  <p>Predict, measure error, adjust, repeat. That is training. Concretely: step 0 predicts €0 for every house (error huge); after many iterations <span class="var">w₁</span> has climbed toward ~€3,100/m² and the error has fallen to its minimum. Loss functions (Lesson 6) define "error," and optimization (Lesson 7) defines "which way to adjust" — which is exactly why those two lessons come next.</p>
+
+  <!-- =================================================================== -->
+  <h2 id="limitations">5 · Limitations — what to keep honest about</h2>
+  <div class="callout limit">
+    <div class="callout-label">Guardrails to carry into every project</div>
+    <ul>
+      <li><strong>ML needs the right data, not just data.</strong> If our spreadsheet lacked location entirely, no algorithm could recover that two identical flats differ by €150,000 across town. "Can this even be predicted from what I have?" is the first question, not the last.</li>
+      <li><strong>Correlation, not comprehension.</strong> If, in our data, expensive houses happen to have blue doors, the model will learn "blue door → high price." It has no notion of cause unless you build it in.</li>
+      <li><strong>Good training score ≠ good model.</strong> A model can hit €0 error on the 4,000 training houses by memorizing them, yet post €80,000 error on the held-out 1,000. Until you measure on unseen data (step 4/6), you know nothing about generalization.</li>
+      <li><strong>The type dictates everything.</strong> Misframe "will it sell in 30 days?" (classification) as regression and you'll pick the wrong algorithms, metrics, and splits. Frame first (step 1).</li>
+    </ul>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="connection">How this connects to the next lesson</h2>
+  <div class="callout connect">
+    <div class="callout-label">Bridge to Lesson 5 — and the end of Module 0</div>
+    <p>This closes Part I: you have the map (Lessons 1–3) and now the machine's blueprint — types of learning and the eight-step workflow, walked on a real brief. Part II zooms into the conceptual core those steps assume. <strong>Lesson 5 — Model, Parameters, and Error</strong> takes the vocabulary you just met — the house model, its weights, the €24,000 gap — and makes it rigorous, so that when Lesson 6 defines loss and Lesson 7 defines optimization, the universal training loop above turns from pseudocode into something you can actually build. The rest of the course is filling in that loop, one algorithm at a time.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="exercises">Exercises &amp; reflection</h2>
+  <p>Still calibration, not code — but now the answers should feel like the start of real ML thinking.</p>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 1 · Name the type</div>
+    <p>Classify each as supervised (regression or classification), unsupervised, or reinforcement:</p>
+    <ol>
+      <li>Predict tomorrow's electricity demand in megawatts.</li>
+      <li>Group a store's customers into segments with no predefined categories.</li>
+      <li>Decide if a transaction is fraudulent, given past labeled transactions.</li>
+      <li>Teach a robot to walk by rewarding forward motion.</li>
+    </ol>
+    <details><summary>Show discussion</summary>
+      <div class="details-body">
+        <p>(1) Supervised — regression (continuous number). (2) Unsupervised — clustering, no labels given. (3) Supervised — classification (fraud/not, with labels). (4) Reinforcement — reward from acting in an environment. If you paused on (1) vs (3): the deciding factor is the <em>label type</em> — a number vs a category.</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 2 · Predict and score by hand</div>
+    <p>Using the model <span class="var">price = 3,100·size + 8,000·bedrooms − 600·age + 5,000</span>, compute the prediction and the error for the <strong>second</strong> house in our table (85 m², 3 bedrooms, 12 years old, actual €295,000).</p>
+    <details><summary>Show solution</summary>
+      <div class="details-body">
+        <p>ŷ = 3,100·85 + 8,000·3 − 600·12 + 5,000 = 263,500 + 24,000 − 7,200 + 5,000 = <strong>€285,300</strong>. Actual is €295,000, so the error is €9,700 (the model under-predicts). Notice it's a smaller gap than the €24,000 we saw on house 3 — training minimizes these gaps <em>across all rows at once</em>, so no single house is perfect.</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 3 · Walk the workflow</div>
+    <p>Pick a supervised problem (e.g. "predict which trial users will convert to paid"). Write one concrete sentence for each of the eight workflow steps as they'd apply — mirroring the house brief. Where would you most fear <em>data leakage</em>, and which step guards against it?</p>
+  </div>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 4 · Memorize vs generalize</div>
+    <p>Explain, in two sentences, why our house model scoring €0 error on the 4,000 training houses might be <em>worse</em> than one scoring €20,000 on them. Use the words "memorize" and "unseen." (You've just previewed overfitting — Lesson 13.)</p>
+  </div>
+
+  <div class="callout intuition">
+    <div class="callout-label">One-paragraph summary to lock it in</div>
+    <p>Machine Learning is program synthesis by optimization: instead of writing the pricing rule, you supply past sales (features <em>and</em> prices) and let training fit a model's parameters so that <span class="var">f(X) ≈ y</span> — and, crucially, still holds on houses it has never seen (generalization). Problems divide by the experience available — supervised (labeled prices), unsupervised (prices removed, find groups), reinforcement (rewarded actions) — and supervised further splits into regression (predict the price) and classification (predict "sells in 30 days?"). Every project runs the same eight-step loop from framing to monitoring, of which "train the model" is a single step; the other seven are the discipline that makes the model trustworthy. That loop is the scaffold on which the entire rest of this course is built.</p>
+  </div>
+
+  <nav class="lessonnav">
+    <a class="prev" href="lesson-03.html">
+      <span class="dir">← Previous</span>
+      <span class="ttl">Lesson 3 · AI vs ML vs Deep Learning vs Data Science</span>
+    </a>
+    <a class="next" href="lesson-05.html">
+      <span class="dir">Next →</span>
+      <span class="ttl">Lesson 5 · Model, Parameters, and Error</span>
+    </a>
+  </nav>
+
+</main>
+
+<footer class="foot">
+  Lesson 4 of 29 · AI → Machine Learning · Understand the <em>why</em> before the <em>how</em>.
+  <span class="byline">&copy; 2026 <a href="https://www.linkedin.com/in/adda-missoum-a534a7319/">Missoum Hadi Adda</a> &middot; Licensed <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>, code <a href="https://opensource.org/license/mit">MIT</a> &middot; <a href="https://github.com/addahadi/ai-to-ml">Source</a> &middot; Built with <a href="https://claude.com/claude-code">Claude Code</a></span>
+  <img src="https://addahadi.goatcounter.com/count?p=/modules/lesson-04.html" alt="" width="1" height="1">
+</footer>
+
+</body>
+</html>

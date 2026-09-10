@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 9 — The Math You Actually Need</title>
+<link rel="stylesheet" href="../assets/style.css">
+<meta name="description" content="The math you actually need for ML: vectors, derivatives, and probability, taught by intuition, not proofs.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="AI → Machine Learning">
+<meta property="og:title" content="Lesson 9 — The Math You Actually Need">
+<meta property="og:description" content="The math you actually need for ML: vectors, derivatives, and probability, taught by intuition, not proofs.">
+<meta property="og:url" content="https://addahadi.github.io/ai-to-ml/modules/lesson-09.html">
+<meta name="twitter:card" content="summary">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand-mark" href="../index.html">AI<span>&#8594;</span>ML</a>
+    <nav>
+      <a href="../index.html">Roadmap</a>
+      <a href="#why">Why this math</a>
+      <a href="#vectors">Vectors</a>
+      <a href="#dot">Dot product</a>
+      <a href="#matrices">Matrices</a>
+      <a href="#derivatives">Derivatives</a>
+      <a href="#probability">Probability</a>
+      <a href="#exercises">Exercises</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="crumb"><a href="../index.html">Roadmap</a> &nbsp;&#8250;&nbsp; Part II &middot; The Machine Learning Mindset &nbsp;&#8250;&nbsp; Module 2 &middot; Tools &amp; Just-Enough Math</div>
+
+  <section class="hero">
+    <span class="eyebrow">Lesson 09 &middot; Setup</span>
+    <h1>The Math You Actually Need: Three Tools, No Textbook</h1>
+    <p class="lead">Last lesson gave you the equipment; this one gives you the notation. To build Linear Regression from scratch you need exactly three pieces of mathematics &mdash; <strong>vectors</strong> (so a prediction over many features is one operation instead of a sum you write out by hand), <strong>derivatives</strong> (which turn the "nudge in the downhill direction" you already did in Lesson 7 into a formula), and <strong>probability</strong> (the language classification will later speak). This is not a maths course. It is a <em>vocabulary</em> lesson, and every symbol here is one you will type as NumPy within two lessons.</p>
+    <div class="meta-row">
+      <span><b>Reading:</b> ~35 min</span>
+      <span><b>Prerequisites:</b> Lessons 5&ndash;8 &middot; high-school algebra</span>
+      <span><b>Code:</b> each idea shown as both a formula and a <code>np</code> call</span>
+    </div>
+  </section>
+
+  <div class="callout why">
+    <div class="callout-label">Why a math lesson, and why such a small one</div>
+    <p>Your instinct, as an engineer, may be to skip this and reach for the algorithm. Resist it for twenty minutes. From Lesson 10 onward every derivation writes a model as <span class="var">w&middot;x + b</span>, differentiates a loss to get a gradient, and &mdash; for classification &mdash; squeezes a score into a probability. If those three moves are fluent, the algorithms read like prose. If they are not, every lesson becomes a fight with notation instead of a lesson about ideas. This page exists so that fight never happens.</p>
+    <p>Equally important is what this lesson <em>refuses</em> to do. Your university will teach you linear algebra and calculus properly, with proofs. We are not competing with that &mdash; we are extracting the thin slice those subjects contribute to <em>this</em> course and presenting it as intuition plus NumPy. You will leave able to <em>use</em> the dot product and the derivative, not to prove theorems about them. That is exactly enough, and no more, on purpose.</p>
+  </div>
+
+  <h2 id="learning-goals">What this lesson delivers</h2>
+  <ul class="checklist">
+    <li>What a <em>vector</em> is in ML terms &mdash; one example, or one set of parameters, held as a list of numbers.</li>
+    <li>The <em>dot product</em>: why <span class="var">w&middot;x + b</span> is the single most-used expression in the course, and why it is one multiply-and-add.</li>
+    <li><em>Length and distance</em> between vectors &mdash; the machinery k-NN and k-Means will run on.</li>
+    <li>The <em>matrix</em> as a whole dataset, and the matrix&ndash;vector product as "all predictions at once".</li>
+    <li>The <em>derivative</em> as slope &mdash; formalising Lesson 7's nudge &mdash; and the <em>gradient</em> as a vector of them.</li>
+    <li>Enough <em>probability</em> &mdash; conditional probability and Bayes' rule &mdash; to make Logistic Regression and Naive Bayes readable when they arrive.</li>
+    <li>For every one of these: the matching NumPy, so the math and the code are one thing in your head.</li>
+  </ul>
+
+  <!-- =================================================================== -->
+  <h2 id="why">1 &middot; The three questions, and the three tools that answer them</h2>
+
+  <p>Rather than march through "linear algebra, then calculus, then probability" as disconnected subjects, anchor each to the concrete question it answers in this course. There are only three, and you have already met all three informally.</p>
+
+  <div class="frame">
+    <div class="frame-row"><div class="n">1</div><div class="c"><b>"How do I combine many features into one prediction?"</b><span> &mdash; A house has size, bedrooms, age, distance-to-centre. The model weights each and sums them. That combine-and-sum <em>is</em> the <strong>dot product</strong>, and it is why we need <strong>vectors</strong>. Answered in Sections 2&ndash;4.</span></div></div>
+    <div class="frame-row"><div class="n">2</div><div class="c"><b>"Which way is downhill on the loss surface?"</b><span> &mdash; Lesson 7 nudged the parameters to reduce error and watched the loss fall. The exact direction and size of that nudge is a <strong>derivative</strong>, and the collection of them across all parameters is the <strong>gradient</strong>. Answered in Section 5.</span></div></div>
+    <div class="frame-row"><div class="n">3</div><div class="c"><b>"How confident is this prediction?"</b><span> &mdash; A spam filter shouldn't just say "spam"; it should say "94% spam". Turning scores into confidences, and reasoning about evidence, is <strong>probability</strong>. Answered in Section 6.</span></div></div>
+  </div>
+
+  <div class="callout intuition">
+    <div class="callout-label">Keep the map, not the details</div>
+    <p>If at any point the symbols feel heavy, come back to this frame. Vectors answer <em>combine</em>, derivatives answer <em>which way downhill</em>, probability answers <em>how confident</em>. Every equation in the course is a variation on one of those three questions &mdash; and knowing <em>which</em> question an equation is answering is most of the battle.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="vectors">2 &middot; Vectors: one example is a list of numbers</h2>
+
+  <p>You already used this in Lesson 8 without naming it. When you wrote a house as <code>[60, 2]</code> &mdash; sixty square metres, two bedrooms &mdash; you wrote a <strong>vector</strong>. There is nothing more mysterious to it than that.</p>
+
+  <div class="callout def">
+    <div class="callout-label">Vector</div>
+    <p>A <strong>vector</strong> is an ordered list of numbers. In ML it plays two distinct roles, and keeping them straight is half the value of the word:</p>
+    <div class="frame">
+      <div class="frame-row"><div class="n">a</div><div class="c"><b>A feature vector &mdash; one example.</b><span> The house <span class="var">x</span> = <span class="var">(60, 2)</span> is a point described by its features. A dataset is a pile of these, one per row. This is the vector you <em>feed in</em>.</span></div></div>
+      <div class="frame-row"><div class="n">b</div><div class="c"><b>A parameter vector &mdash; one model.</b><span> The weights <span class="var">w</span> = <span class="var">(w&#8321;, w&#8322;)</span> &mdash; how much price responds to each of size and bedrooms &mdash; is also a vector. This is the vector you <em>learn</em>.</span></div></div>
+    </div>
+  </div>
+
+  <p>The number of entries is the vector's <strong>dimension</strong>. A house with four features is a 4-dimensional vector, a point in 4-D space. You cannot picture 4-D, and you never need to: the algebra that works in the 2-D you <em>can</em> picture works identically in 400-D. That is the quiet superpower of vector notation &mdash; <strong>it is written once and holds for any number of features</strong>, so a formula proven on a whiteboard with two features is already the formula your code runs on two hundred.</p>
+
+  <p class="code-cap">a vector is just a 1-D NumPy array &mdash; you have been making them since Lesson 8</p>
+  <pre><code><span class="tok-k">import</span> numpy <span class="tok-k">as</span> np
+
+x = np.array([<span class="tok-n">60</span>, <span class="tok-n">2</span>])          <span class="tok-c"># a feature vector: one house, 2 features</span>
+w = np.array([<span class="tok-n">3.0</span>, <span class="tok-n">15.0</span>])      <span class="tok-c"># a parameter vector: price per m2, price per bedroom</span>
+
+x.shape                            <span class="tok-c"># (2,)   <- dimension 2, a 2-D vector</span>
+x + x                              <span class="tok-c"># [120   4]   add element-wise (Lesson 8)</span>
+<span class="tok-n">2</span> * x                              <span class="tok-c"># [120   4]   scale every entry</span></code></pre>
+
+  <p>Two operations define a vector: you can <strong>add</strong> two of the same dimension (line them up, add entry by entry) and you can <strong>scale</strong> one by a single number (multiply every entry). Geometrically, adding vectors places one arrow's tail at the other's head; scaling stretches or flips an arrow. You will lean on the intuition, not the geometry &mdash; but it is worth knowing the arrows are there, because "the model is a point in parameter space and learning walks it downhill" (Lesson 7) is exactly that picture.</p>
+
+  <!-- =================================================================== -->
+  <h2 id="dot">3 &middot; The dot product: the one expression the whole course is built on</h2>
+
+  <p>Here is the single most important piece of notation in classical ML. When a linear model predicts a price from a house's features, it multiplies each feature by its weight and sums the results:</p>
+
+  <div class="eq">prediction = <span class="var">w&#8321;</span>&middot;<span class="var">x&#8321;</span> + <span class="var">w&#8322;</span>&middot;<span class="var">x&#8322;</span> + &hellip; + <span class="var">w&#8345;</span>&middot;<span class="var">x&#8345;</span> + <span class="var">b</span></div>
+
+  <p>Writing that sum out is tedious for two features and impossible for two hundred. The <strong>dot product</strong> is the notation that compresses the entire multiply-each-pair-and-add into two symbols.</p>
+
+  <div class="callout def">
+    <div class="callout-label">Dot product</div>
+    <p>The <strong>dot product</strong> of two vectors of the same dimension, written <span class="var">w&middot;x</span>, multiplies matching entries and adds the results into a <em>single number</em>:</p>
+    <div class="eq"><span class="var">w</span>&middot;<span class="var">x</span> &nbsp;=&nbsp; &Sigma;<sub>i</sub> <span class="var">w&#7522;</span>&middot;<span class="var">x&#7522;</span> &nbsp;=&nbsp; <span class="var">w&#8321;x&#8321;</span> + <span class="var">w&#8322;x&#8322;</span> + &hellip; + <span class="var">w&#8345;x&#8345;</span></div>
+    <p>Two vectors go in; one scalar comes out. That scalar is a <em>weighted sum</em> &mdash; a score. Almost every linear method in this course computes a score exactly this way.</p>
+  </div>
+
+  <p>With it, the whole linear model collapses to a single, dimension-independent expression &mdash; the one you will read a hundred times from Lesson 10 onward:</p>
+
+  <div class="eq"><span class="var">&#375;</span> = <span class="var">w</span>&middot;<span class="var">x</span> + <span class="var">b</span></div>
+
+  <p>Read it aloud: "the prediction is the dot product of the weights with the features, plus a bias." That one line is Linear Regression's model (Lesson 10), the score inside Logistic Regression (Lesson 14), and the signed distance inside an SVM (Lesson 18). Learn to see <span class="var">w&middot;x + b</span> and think <em>"weighted vote of the features, plus an offset"</em> and three future lessons are already half-understood.</p>
+
+  <p class="code-cap">the dot product is one call &mdash; and it replaces a loop, exactly like Lesson 8's gradient</p>
+  <pre><code>x = np.array([<span class="tok-n">60</span>, <span class="tok-n">2</span>])
+w = np.array([<span class="tok-n">3.0</span>, <span class="tok-n">15.0</span>])
+b = <span class="tok-n">20.0</span>
+
+np.dot(w, x)          <span class="tok-c"># 3*60 + 15*2 = 210.0   <- one weighted sum</span>
+w @ x                 <span class="tok-c"># 210.0   the @ operator IS the dot product, and reads cleanly</span>
+
+y_hat = w @ x + b     <span class="tok-c"># 230.0   the model, verbatim: w.x + b</span>
+
+<span class="tok-c"># the loop it replaces -- correct, but the thing we are escaping</span>
+total = <span class="tok-n">0.0</span>
+<span class="tok-k">for</span> i <span class="tok-k">in</span> range(len(w)):
+    total += w[i] * x[i]          <span class="tok-c"># total ends at 210.0, slowly</span></code></pre>
+
+  <div class="callout intuition">
+    <div class="callout-label">Why <span class="var">w&middot;x</span> is a "weighted vote"</div>
+    <p>Think of each weight <span class="var">w&#7522;</span> as how strongly feature <span class="var">i</span> gets to vote, and its sign as the direction of the vote. A large positive <span class="var">w</span> on "size" says <em>bigger pushes price up, hard</em>; a negative <span class="var">w</span> on "age" says <em>older pulls it down</em>. The dot product tallies every feature's vote into one number. When Lesson 10 "learns the weights", it is learning <em>how much each feature's vote should count</em> &mdash; and that is the entire content of training a linear model. The bias <span class="var">b</span> is the baseline before any feature speaks.</p>
+  </div>
+
+  <h3>Length and distance &mdash; the same idea, pointed at yourself</h3>
+
+  <p>A dot product of a vector <em>with itself</em> gives a second tool you'll need the moment we reach k-NN and k-Means: a notion of <strong>size</strong>, and from it, <strong>distance between two points</strong>.</p>
+
+  <div class="callout math">
+    <div class="callout-label">Norm and Euclidean distance</div>
+    <p>The <strong>length</strong> (or <em>norm</em>) of a vector is the square root of its dot product with itself &mdash; Pythagoras, in any dimension:</p>
+    <div class="eq">&#8214;<span class="var">x</span>&#8214; = &radic;(<span class="var">x</span>&middot;<span class="var">x</span>) = &radic;(<span class="var">x&#8321;&sup2;</span> + <span class="var">x&#8322;&sup2;</span> + &hellip; + <span class="var">x&#8345;&sup2;</span>)</div>
+    <p>The <strong>distance</strong> between two points is the length of the vector between them &mdash; subtract, then take the norm:</p>
+    <div class="eq">dist(<span class="var">a</span>, <span class="var">b</span>) = &#8214;<span class="var">a</span> &minus; <span class="var">b</span>&#8214; = &radic;(&Sigma;<sub>i</sub> (<span class="var">a&#7522;</span> &minus; <span class="var">b&#7522;</span>)&sup2;)</div>
+  </div>
+
+  <p>That second formula is the entire mathematical content of <strong>k-Nearest Neighbors</strong> (Lesson 15): "which stored points are closest to this new one?" is answered by computing this distance to each. It reappears in <strong>k-Means</strong> (Lesson 24), which assigns each point to its nearest cluster centre. The algorithms differ in what they <em>do</em> with distance; the distance itself is this one line.</p>
+
+  <p class="code-cap">length and distance, straight from the norm</p>
+  <pre><code>a = np.array([<span class="tok-n">60</span>, <span class="tok-n">2</span>])
+b = np.array([<span class="tok-n">95</span>, <span class="tok-n">3</span>])
+
+np.sqrt(a @ a)                 <span class="tok-c"># 60.03...   the length of a</span>
+np.linalg.norm(a)              <span class="tok-c"># 60.03...   same thing, the direct call</span>
+
+np.linalg.norm(a - b)          <span class="tok-c"># 35.01...   Euclidean distance between the two houses</span>
+np.sqrt(np.sum((a - b)**<span class="tok-n">2</span>))     <span class="tok-c"># 35.01...   the formula spelled out, to see it is the same</span></code></pre>
+
+  <!-- =================================================================== -->
+  <h2 id="matrices">4 &middot; Matrices: the whole dataset in one object</h2>
+
+  <p>One house is a vector. A thousand houses stacked as rows is a <strong>matrix</strong> &mdash; and you have been holding datasets in exactly this shape since Lesson 8, where a <code>(1000, 4)</code> array meant a thousand rows of four features. The word "matrix" simply names that 2-D array and unlocks one operation that makes it powerful.</p>
+
+  <div class="callout def">
+    <div class="callout-label">Matrix, in ML terms</div>
+    <p>A <strong>matrix</strong> is a rectangle of numbers &mdash; rows &times; columns. In this course it is almost always the <strong>design matrix</strong> <span class="var">X</span> of shape <span class="var">(n, d)</span>: <span class="var">n</span> examples down the rows, <span class="var">d</span> features across the columns. Row <span class="var">i</span> is the feature vector of example <span class="var">i</span>. The whole dataset, one object.</p>
+  </div>
+
+  <p>Now the payoff. You know how to predict for <em>one</em> house: <span class="var">&#375; = w&middot;x + b</span>. To predict for <em>all thousand</em>, you do not loop &mdash; you take the <strong>matrix&ndash;vector product</strong> <span class="var">X w</span>, which computes the dot product of every row with <span class="var">w</span> in one operation and returns a vector of a thousand predictions:</p>
+
+  <div class="eq"><span class="var">&#375;</span> = <span class="var">X</span> <span class="var">w</span> + <span class="var">b</span> &nbsp;&nbsp;&nbsp;&nbsp; shapes: <span class="var">(n, d)</span> &middot; <span class="var">(d,)</span> &rarr; <span class="var">(n,)</span>, then <span class="var">+ b</span> broadcasts</div>
+
+  <div class="callout intuition">
+    <div class="callout-label">Matrix&ndash;vector product = "the dot product, applied to every row"</div>
+    <p>There is nothing new to learn here. <span class="var">X w</span> is just "take row 1, dot it with <span class="var">w</span>; take row 2, dot it with <span class="var">w</span>; &hellip;" &mdash; the Section 3 dot product run once per example, bundled into a single call. This is vectorization (Lesson 8) at the level of the whole model: the loop over a thousand houses vanishes into compiled C, and the code that predicts for one house and the code that predicts for a million look <em>identical</em>. That is why the from-scratch algorithms stay short.</p>
+  </div>
+
+  <p class="code-cap">all predictions at once &mdash; the model, scaled to the whole dataset</p>
+  <pre><code>X = np.array([[<span class="tok-n">60</span>, <span class="tok-n">2</span>],        <span class="tok-c"># 3 houses, 2 features -> shape (3, 2)</span>
+              [<span class="tok-n">95</span>, <span class="tok-n">3</span>],
+              [<span class="tok-n">120</span>, <span class="tok-n">4</span>]])
+w = np.array([<span class="tok-n">3.0</span>, <span class="tok-n">15.0</span>])
+b = <span class="tok-n">20.0</span>
+
+y_hat = X @ w + b     <span class="tok-c"># [230.  350.  440.]  <- three predictions, one line, no loop</span>
+y_hat.shape           <span class="tok-c"># (3,)   one prediction per row</span></code></pre>
+
+  <div class="callout limit">
+    <div class="callout-label">The one rule that prevents every matrix bug: shapes must line up</div>
+    <p>A matrix product is only defined when the <em>inner</em> dimensions match: <span class="var">(n, d)</span> times <span class="var">(d,)</span> works because the <span class="var">d</span>&rsquo;s meet; the result takes the <em>outer</em> dimensions, <span class="var">(n,)</span>. Try <span class="var">(n, d)</span> times <span class="var">(n,)</span> and NumPy raises a shape error &mdash; which, as Lesson 8 insisted, is a gift. When a from-scratch algorithm throws, nine times in ten it is this: a <code>w</code> or an <code>X</code> transposed the wrong way. The fix is always the same &mdash; print both <code>.shape</code>s and read whether the inner dimensions touch. You will not need the full theory of matrix multiplication in this course; you will need this one alignment rule constantly.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="derivatives">5 &middot; Derivatives: putting a number on "which way is downhill"</h2>
+
+  <p>In Lesson 7 you minimised a loss by hand: you were somewhere on a bowl-shaped surface, you figured out which direction went down, and you stepped that way. The <strong>derivative</strong> is the piece of mathematics that computes that direction and its steepness exactly, instead of by eye. It is the formal name for the nudge you already performed.</p>
+
+  <div class="callout def">
+    <div class="callout-label">Derivative</div>
+    <p>The <strong>derivative</strong> of a function at a point is its <em>slope</em> there &mdash; the rate at which the output changes as you nudge the input. Written <span class="var">df/dx</span> or <span class="var">f&#8242;(x)</span>, it answers: "if I increase <span class="var">x</span> by a tiny amount, how much, and in which direction, does <span class="var">f</span> move?" Positive slope: <span class="var">f</span> rises as <span class="var">x</span> rises. Negative slope: <span class="var">f</span> falls. Zero slope: flat &mdash; a peak, a valley, or a ledge.</p>
+  </div>
+
+  <p>That last case is the whole reason we care. A loss function is a bowl; its lowest point is where the model fits best; and <strong>at the bottom of the bowl the slope is zero</strong>. So "train the model" becomes "find where the derivative is zero", and "step downhill" becomes "step against the sign of the derivative". Three facts carry all of it:</p>
+
+  <div class="frame">
+    <div class="frame-row"><div class="n">1</div><div class="c"><b>Sign points the way.</b><span> If the slope is positive, the function increases to the right, so to go <em>down</em> you move left &mdash; against the slope. This is precisely why the update rule subtracts: <span class="var">w &larr; w &minus; &alpha;&middot;(slope)</span>.</span></div></div>
+    <div class="frame-row"><div class="n">2</div><div class="c"><b>Size measures steepness.</b><span> A big slope means a steep wall &mdash; a big nudge changes the loss a lot; a small slope means near-flat ground. This is why steps naturally shrink as you approach the bottom: the slope itself is fading.</span></div></div>
+    <div class="frame-row"><div class="n">3</div><div class="c"><b>Zero means stop.</b><span> Slope zero is a flat spot &mdash; for the bowl-shaped losses in this course, the minimum. Gradient descent halts itself there because the update <span class="var">&minus;&alpha;&middot;0</span> is no move at all.</span></div></div>
+  </div>
+
+  <p>You need the derivatives of only a couple of shapes, and you can read them off intuitively rather than memorising rules. The one that matters most is the parabola, because squared error &mdash; the loss from Lesson 6 &mdash; is one:</p>
+
+  <div class="callout math">
+    <div class="callout-label">The three derivatives this course actually uses</div>
+    <div class="eq"><span class="var">f</span>(<span class="var">x</span>) = <span class="var">x</span>&sup2; &nbsp;&rarr;&nbsp; <span class="var">f&#8242;</span>(<span class="var">x</span>) = 2<span class="var">x</span> &nbsp;&nbsp; &mdash; steep far from 0, flat at 0 (the bottom of the bowl)</div>
+    <div class="eq"><span class="var">f</span>(<span class="var">x</span>) = <span class="var">c</span>&middot;<span class="var">x</span> &nbsp;&rarr;&nbsp; <span class="var">f&#8242;</span>(<span class="var">x</span>) = <span class="var">c</span> &nbsp;&nbsp; &mdash; a straight line has one constant slope, its coefficient</div>
+    <div class="eq"><span class="var">f</span>(<span class="var">x</span>) = <span class="var">c</span> (a constant) &nbsp;&rarr;&nbsp; <span class="var">f&#8242;</span>(<span class="var">x</span>) = 0 &nbsp;&nbsp; &mdash; flat everywhere; the bias term differentiates away</div>
+    <p>Notice <span class="var">x</span>&sup2; has slope <span class="var">2x</span>: far to the right of zero the parabola climbs steeply (big positive slope), far to the left it drops steeply (big negative slope), and exactly at the bottom the slope is zero. That single picture &mdash; <em>steep on the sides, flat at the minimum</em> &mdash; is the shape of every loss surface you will descend.</p>
+  </div>
+
+  <h3>From one derivative to the gradient</h3>
+
+  <p>A real model has many parameters &mdash; a weight per feature, plus a bias. The loss depends on all of them at once, so "the slope" is not a single number but one slope <em>per parameter</em>: how the loss changes as you nudge <span class="var">w&#8321;</span> alone, <span class="var">w&#8322;</span> alone, <span class="var">b</span> alone. Each of these is a <strong>partial derivative</strong> (written <span class="var">&part;J/&part;w&#8321;</span>), and stacking them into a vector gives the <strong>gradient</strong>.</p>
+
+  <div class="callout def">
+    <div class="callout-label">Gradient</div>
+    <p>The <strong>gradient</strong> &#8711;<span class="var">J</span> of a loss <span class="var">J</span> is the vector of its partial derivatives &mdash; one slope for each parameter, bundled together:</p>
+    <div class="eq">&#8711;<span class="var">J</span> = ( &part;<span class="var">J</span>/&part;<span class="var">w&#8321;</span>, &nbsp; &part;<span class="var">J</span>/&part;<span class="var">w&#8322;</span>, &nbsp;&hellip;, &nbsp; &part;<span class="var">J</span>/&part;<span class="var">b</span> )</div>
+    <p>It has a beautiful geometric meaning: the gradient points in the direction of <em>steepest increase</em> of the loss. So <strong>minus</strong> the gradient points straight downhill &mdash; the direction of fastest decrease. That is the whole of "gradient descent": repeatedly step a little way along <span class="var">&minus;</span>&#8711;<span class="var">J</span>.</p>
+  </div>
+
+  <div class="callout connect">
+    <div class="callout-label">You have already computed a gradient</div>
+    <p>This is not new material dressed up &mdash; it is Lesson 7 and Lesson 8, named. The two formulas you used there,</p>
+    <div class="eq">&part;<span class="var">J</span>/&part;<span class="var">w</span> = &minus;(2/<span class="var">n</span>)&middot;&Sigma; <span class="var">x&#7522;</span>(<span class="var">y&#7522;</span> &minus; <span class="var">&#375;&#7522;</span>) &nbsp;&nbsp;&nbsp; &part;<span class="var">J</span>/&part;<span class="var">b</span> = &minus;(2/<span class="var">n</span>)&middot;&Sigma; (<span class="var">y&#7522;</span> &minus; <span class="var">&#375;&#7522;</span>)</div>
+    <p>are the two components of the gradient of Mean Squared Error &mdash; and the <code>2</code> in each is precisely the <code>2x</code> derivative of the squared term above. In Lesson 8 you wrote them as <code>dw = -2 * np.mean(x * error)</code> and <code>db = -2 * np.mean(error)</code>. So you have <em>already implemented</em> the calculus of this section; Lesson 10 will simply <em>derive</em> those two lines from scratch, and now you have the vocabulary to follow every step.</p>
+  </div>
+
+  <div class="callout practice">
+    <div class="callout-label">The chain rule, in one sentence &mdash; the only rule you'll reach for repeatedly</div>
+    <p>Losses are functions <em>of</em> a prediction which is itself a function <em>of</em> the parameters &mdash; a chain. The <strong>chain rule</strong> says: to differentiate a nested function, multiply the slopes of each link. "How does the loss change with <span class="var">w</span>?" = "how does the loss change with the prediction" &times; "how does the prediction change with <span class="var">w</span>". That single idea is where the <code>x&#7522;</code> factor in <span class="var">&part;J/&part;w</span> comes from &mdash; the prediction <span class="var">w&middot;x</span> changes with <span class="var">w</span> at rate <span class="var">x</span>. You do not need to master it here; recognise the phrase, because every from-scratch derivation from Lesson 10 on is one application of it.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="probability">6 &middot; Probability: the language of confidence and evidence</h2>
+
+  <p>Regression predicts a number and is done. Classification &mdash; is this email spam? is this tumour malignant? &mdash; should not answer with a bare yes/no but with a <em>confidence</em>: "94% spam." Probability is the mathematics of that confidence, and of reasoning from evidence. Two ML methods are built directly on it (Logistic Regression, Naive Bayes), and evaluation itself (Lesson 20) speaks it fluently, so a small, sturdy foundation pays off repeatedly.</p>
+
+  <div class="callout def">
+    <div class="callout-label">Probability, the three facts that anchor everything</div>
+    <ul>
+      <li>A probability <span class="var">P(A)</span> is a number in <span class="var">[0, 1]</span>: <span class="var">0</span> = impossible, <span class="var">1</span> = certain, <span class="var">0.5</span> = a coin's-edge maybe.</li>
+      <li>The probabilities of all mutually exclusive outcomes <strong>sum to 1</strong> &mdash; something must happen. (This is why a classifier's class probabilities are made to add to one.)</li>
+      <li>If two events are <strong>independent</strong> &mdash; one tells you nothing about the other &mdash; the probability of both is the product: <span class="var">P(A and B) = P(A)&middot;P(B)</span>. (This product is the "naive" shortcut at the heart of Naive Bayes.)</li>
+    </ul>
+  </div>
+
+  <h3>Conditional probability &mdash; updating a belief with evidence</h3>
+
+  <p>The idea classification lives on is the <strong>conditional probability</strong> <span class="var">P(A | B)</span>: "the probability of <span class="var">A</span> <em>given that</em> we know <span class="var">B</span>." A spam filter wants <span class="var">P(spam | the words in this email)</span> &mdash; how likely spam is, <em>given</em> the evidence in front of it. The vertical bar reads "given"; it is how new evidence sharpens a guess.</p>
+
+  <div class="callout math">
+    <div class="callout-label">Bayes' rule &mdash; flipping the condition around</div>
+    <p>Often you can easily measure <span class="var">P(evidence | cause)</span> but actually want <span class="var">P(cause | evidence)</span>. <strong>Bayes' rule</strong> is the bridge between them:</p>
+    <div class="eq"><span class="var">P(A | B)</span> = <span class="var">P(B | A)</span> &middot; <span class="var">P(A)</span> &nbsp;/&nbsp; <span class="var">P(B)</span></div>
+    <p>In spam terms: <span class="var">P(spam | words)</span> = <span class="var">P(words | spam)</span> &middot; <span class="var">P(spam)</span> / <span class="var">P(words)</span>. You can estimate "how often these words appear in known spam" (<span class="var">P(words | spam)</span>) and "how common spam is overall" (<span class="var">P(spam)</span>, the <em>prior</em>) directly from a labelled corpus &mdash; and Bayes turns those into the answer you wanted. This equation is the entire skeleton of <strong>Naive Bayes</strong> (Lesson 17); that lesson's only added ingredient is the independence shortcut above, used to make <span class="var">P(words | spam)</span> computable.</p>
+  </div>
+
+  <h3>From a score to a probability &mdash; where regression meets classification</h3>
+
+  <p>Section 3 gave you a score, <span class="var">w&middot;x + b</span>, that ranges over all real numbers. A probability must live in <span class="var">[0, 1]</span>. Something must <em>squash</em> the unbounded score into that interval &mdash; and that something is the <strong>sigmoid</strong> (logistic) function, the hinge on which Logistic Regression turns.</p>
+
+  <div class="callout math">
+    <div class="callout-label">The sigmoid: an S-curve that turns any score into a probability</div>
+    <div class="eq">&sigma;(<span class="var">z</span>) = 1 / (1 + <span class="var">e</span><sup>&minus;<span class="var">z</span></sup>) &nbsp;&nbsp;&nbsp; where &nbsp; <span class="var">z</span> = <span class="var">w</span>&middot;<span class="var">x</span> + <span class="var">b</span></div>
+    <p>It maps a very negative score to near <span class="var">0</span>, a very positive score to near <span class="var">1</span>, and a score of <span class="var">0</span> to exactly <span class="var">0.5</span> &mdash; the point of maximum uncertainty. Feed the linear score through it and the number stops being an arbitrary tally and becomes an honest confidence. That is the <em>whole</em> move that converts Linear Regression's machinery into a classifier: <strong>same <span class="var">w&middot;x + b</span>, wrapped in a squashing function.</strong> Lesson 14 is essentially this one equation, taken seriously.</p>
+  </div>
+
+  <p class="code-cap">the sigmoid, and why it needs no loop &mdash; it broadcasts over a whole vector of scores</p>
+  <pre><code><span class="tok-k">def</span> sigmoid(z):
+    <span class="tok-k">return</span> <span class="tok-n">1</span> / (<span class="tok-n">1</span> + np.exp(-z))      <span class="tok-c"># np.exp broadcasts: works on a number OR an array</span>
+
+sigmoid(np.array([-<span class="tok-n">4.0</span>, <span class="tok-n">0.0</span>, <span class="tok-n">4.0</span>]))
+<span class="tok-c"># [0.018  0.5   0.982]  <- a strong 'no', a shrug, a strong 'yes'</span></code></pre>
+
+  <div class="callout intuition">
+    <div class="callout-label">Why probability, and not just a threshold</div>
+    <p>You could classify by thresholding the raw score at zero and never mention probability. Two things break if you do. First, you lose the <em>confidence</em> &mdash; and a medical or fraud model that says "malignant, 51%" should be treated very differently from one that says "malignant, 99%". Second, you lose a principled <em>loss to train against</em>: once outputs are probabilities, there is a natural measure of wrongness (cross-entropy, Lesson 14) that punishes confident mistakes far more than hesitant ones, which is exactly the incentive you want. Probability is not decoration on classification; it is what makes classification trainable and trustworthy.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="limitations">7 &middot; Limitations &mdash; what to keep honest about</h2>
+  <div class="callout limit">
+    <div class="callout-label">Guardrails to carry forward</div>
+    <ul>
+      <li><strong>This is intuition, not rigour.</strong> Real linear algebra and calculus courses prove what we have only motivated &mdash; and you should take those courses. What you have here is the working subset that makes <em>this</em> course readable, not a substitute for the mathematics itself.</li>
+      <li><strong>Notation compresses; it does not simplify.</strong> <span class="var">w&middot;x + b</span> hides a sum over every feature, and <span class="var">X w</span> hides a loop over every example. The brevity is the point &mdash; but never forget the loops are still there, running in C. When something is slow or memory-hungry, it is those hidden loops.</li>
+      <li><strong>Linearity is an assumption, not a law.</strong> The dot-product model assumes the target is a <em>weighted sum</em> of features. When the true relationship curves or features interact, that assumption is wrong &mdash; which is what polynomial features (Lesson 12) and non-linear models (trees, Lesson 16) exist to fix.</li>
+      <li><strong>Zero gradient is not always the global minimum.</strong> For the bowl-shaped losses in this course it is, which is why gradient descent works so cleanly here. In general (and in the deep learning beyond our scope) a flat spot can be a local dip or a saddle &mdash; a caveat worth filing away, not worrying about yet.</li>
+      <li><strong>Probabilities from a model are estimates, not truths.</strong> A model that outputs "0.94" is reporting <em>its</em> confidence given its training data, which may be biased or too small. A calibrated-looking number can still be wrong &mdash; treat model probabilities as informed guesses, and Lesson 20 as where you learn to check them.</li>
+    </ul>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="connection">How this connects to the next lesson</h2>
+  <div class="callout connect">
+    <div class="callout-label">Bridge to Lesson 10 &mdash; Linear Regression from scratch</div>
+    <p>Module 2 is now complete, and with it the whole runway. You have the <em>equipment</em> (Lesson 8: arrays, vectorization, broadcasting) and the <em>vocabulary</em> (this lesson: the dot product, the derivative, probability). Every tool the from-scratch lessons need is in your hands.</p>
+    <p><strong>Lesson 10 opens Part III and builds a real Linear Regression from nothing.</strong> Watch how completely it is assembled from these two lessons: the model is <span class="var">&#375; = X w + b</span> (Section 4's matrix&ndash;vector product), the loss is Mean Squared Error (Lesson 6, a parabola whose derivative you now know is <span class="var">2x</span>-shaped), the gradient is the vector of partials from Section 5, and the training loop is Lesson 7's descent written in Lesson 8's NumPy. Nothing new will be introduced except how the pieces click together &mdash; because you spent Module 2 making sure every piece was already familiar. That is the reward for a tools-and-notation module done patiently: the first real algorithm arrives feeling less like new material and more like a conclusion you were always heading toward.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="exercises">Exercises &amp; reflection</h2>
+  <p>Do the by-hand parts on paper first, then check with a Python session &mdash; the notation sticks when your hand and the code agree.</p>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 1 &middot; Compute a prediction by dot product</div>
+    <p>A model has weights <span class="var">w</span> = <span class="var">(3, 15)</span> (price per m&sup2;, price per bedroom) and bias <span class="var">b</span> = <span class="var">20</span>. Compute the predicted price for a house <span class="var">x</span> = <span class="var">(80, 3)</span> as <span class="var">w&middot;x + b</span>, by hand. Then write the one line of NumPy that reproduces it.</p>
+    <details><summary>Show solution</summary>
+      <div class="details-body">
+        <p><span class="var">w&middot;x</span> = 3&middot;80 + 15&middot;3 = 240 + 45 = 285; add <span class="var">b</span> = 20 &rarr; <strong>305</strong>. In NumPy: <code>np.array([3, 15]) @ np.array([80, 3]) + 20</code>, which returns <code>305</code>. Read it back as a weighted vote: size contributes 240, bedrooms 45, baseline 20.</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 2 &middot; Predict for a whole dataset, then check the shape</div>
+    <p>With the same <span class="var">w</span> and <span class="var">b</span>, and the design matrix <code>X = np.array([[60, 2], [95, 3], [120, 4]])</code>, write the single expression that predicts all three prices at once. Before running it, state the shape of the result and why.</p>
+    <details><summary>Show solution</summary>
+      <div class="details-body">
+        <p><code>X @ w + b</code> gives <code>[230. 350. 440.]</code>, shape <code>(3,)</code>. The product <span class="var">(3, 2)</span>&middot;<span class="var">(2,)</span> has matching inner dimension 2, so it is legal, and the result takes the outer dimension &mdash; one prediction per row, <span class="var">(3,)</span>. The scalar <span class="var">b</span> then broadcasts across all three. If you had written <code>w @ X</code> instead you'd get a shape error, because <span class="var">(2,)</span>&middot;<span class="var">(3, 2)</span> misaligns &mdash; a reminder to read the inner dimensions.</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 3 &middot; Read a derivative as a direction</div>
+    <p>You are minimising a loss and, at your current weight, the slope <span class="var">&part;J/&part;w</span> comes out to <span class="var">+8</span>. (a) Is the loss increasing or decreasing as <span class="var">w</span> grows here? (b) To reduce the loss, should you increase or decrease <span class="var">w</span>? (c) With learning rate <span class="var">&alpha;</span> = <span class="var">0.1</span>, what is the new <span class="var">w</span> if the old one was <span class="var">5</span>?</p>
+    <details><summary>Show solution</summary>
+      <div class="details-body">
+        <p>(a) A positive slope means the loss <em>increases</em> as <span class="var">w</span> grows. (b) So to go downhill you must <em>decrease</em> <span class="var">w</span> &mdash; move against the slope. (c) The update is <span class="var">w &larr; w &minus; &alpha;&middot;(&part;J/&part;w)</span> = 5 &minus; 0.1&middot;8 = 5 &minus; 0.8 = <strong>4.2</strong>. The subtraction is exactly what makes "against the slope" automatic &mdash; a positive gradient produces a step to the left.</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 4 &middot; Squash a score into a probability</div>
+    <p>A logistic model produces a raw score <span class="var">z</span> = <span class="var">w&middot;x + b</span> = <span class="var">2.0</span> for some email. (a) Roughly what probability of spam does the sigmoid assign &mdash; below, at, or well above <span class="var">0.5</span>? (b) What score <span class="var">z</span> would correspond to exactly <span class="var">0.5</span>? (c) In one sentence, why can't we use the raw <span class="var">2.0</span> as a probability directly?</p>
+    <details><summary>Show solution</summary>
+      <div class="details-body">
+        <p>(a) <span class="var">&sigma;(2.0)</span> &asymp; <code>0.88</code> &mdash; well above <span class="var">0.5</span>, a fairly confident "spam". (b) <span class="var">z</span> = <span class="var">0</span> gives exactly <span class="var">0.5</span>, the point of maximum uncertainty. (c) Because a probability must lie in <span class="var">[0, 1]</span>, and the raw score is unbounded &mdash; <span class="var">2.0</span> is a fine <em>score</em> but a meaningless <em>probability</em> until the sigmoid squashes it into range.</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 5 &middot; Bayes on paper</div>
+    <p>A disease affects <span class="var">1%</span> of people (<span class="var">P(sick)</span> = <span class="var">0.01</span>). A test is positive in <span class="var">90%</span> of sick people (<span class="var">P(+ | sick)</span> = <span class="var">0.9</span>) but also in <span class="var">5%</span> of healthy people (<span class="var">P(+ | healthy)</span> = <span class="var">0.05</span>). You test positive. Before computing, guess whether <span class="var">P(sick | +)</span> is closer to <span class="var">90%</span> or to <span class="var">15%</span> &mdash; then use Bayes' rule to find out. (This is a famous intuition-breaker; the point is to feel why the answer surprises people.)</p>
+    <details><summary>Show solution</summary>
+      <div class="details-body">
+        <p>Denominator <span class="var">P(+)</span> = <span class="var">P(+|sick)P(sick)</span> + <span class="var">P(+|healthy)P(healthy)</span> = 0.9&middot;0.01 + 0.05&middot;0.99 = 0.009 + 0.0495 = 0.0585. Then <span class="var">P(sick | +)</span> = (0.9&middot;0.01) / 0.0585 = 0.009 / 0.0585 &asymp; <strong>0.154</strong> &mdash; only about <strong>15%</strong>, not 90%. The reason: the disease is so rare that the <em>false positives from the huge healthy population</em> outnumber the true positives from the tiny sick one. The low <em>prior</em> <span class="var">P(sick)</span> dominates &mdash; which is exactly why priors matter, and why Naive Bayes keeps one.</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="callout intuition">
+    <div class="callout-label">One-paragraph summary to lock it in</div>
+    <p>Classical ML needs a thin, specific slice of mathematics, and it answers three questions. <em>How do you combine features into a prediction?</em> &mdash; with <strong>vectors</strong> and the <strong>dot product</strong>: a house is a feature vector, a model is a weight vector, and <span class="var">&#375; = w&middot;x + b</span> is a weighted vote of the features that reappears in Linear Regression, Logistic Regression, and SVMs alike; the same dot-product machinery, aimed at a vector minus another, gives the <strong>Euclidean distance</strong> that k-NN and k-Means run on, and stacked over rows becomes the <strong>matrix&ndash;vector product</strong> <span class="var">X w</span> that predicts for a whole dataset in one call. <em>Which way is downhill on the loss?</em> &mdash; with the <strong>derivative</strong>, the slope whose sign points away from the minimum and whose size measures steepness, bundled across all parameters into the <strong>gradient</strong> &#8711;<span class="var">J</span>, whose negative is the direction gradient descent steps &mdash; and you have already computed exactly this, as the <code>-2 * np.mean(...)</code> lines of Lesson 8. <em>How confident is a prediction?</em> &mdash; with <strong>probability</strong>: conditional probability <span class="var">P(A|B)</span> and <strong>Bayes' rule</strong> underwrite Naive Bayes, while the <strong>sigmoid</strong> squashes an unbounded score <span class="var">w&middot;x + b</span> into a <span class="var">[0,1]</span> confidence and turns regression's machinery into a classifier. None of this was rigorous, and none of it needed to be &mdash; it is the working vocabulary that makes Lesson 10 read like a conclusion rather than a surprise. Module 2 is done; the equipment and the notation are both in hand; Linear Regression from scratch is next.</p>
+  </div>
+
+  <nav class="lessonnav">
+    <a class="prev" href="lesson-08.html">
+      <span class="dir">&larr; Previous</span>
+      <span class="ttl">Lesson 8 &middot; The Scientific Python Stack</span>
+    </a>
+    <a class="next disabled" href="#" aria-disabled="true">
+      <span class="dir">Next &rarr;</span>
+      <span class="ttl">Lesson 10 &middot; Linear Regression from scratch</span>
+    </a>
+  </nav>
+
+</main>
+
+<footer class="foot">
+  Lesson 9 of 29 &middot; AI &rarr; Machine Learning &middot; Understand the <em>why</em> before the <em>how</em>.
+  <span class="byline">&copy; 2026 <a href="https://www.linkedin.com/in/adda-missoum-a534a7319/">Missoum Hadi Adda</a> &middot; Licensed <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>, code <a href="https://opensource.org/license/mit">MIT</a> &middot; <a href="https://github.com/addahadi/ai-to-ml">Source</a> &middot; Built with <a href="https://claude.com/claude-code">Claude Code</a></span>
+  <img src="https://addahadi.goatcounter.com/count?p=/modules/lesson-09.html" alt="" width="1" height="1">
+</footer>
+
+</body>
+</html>
