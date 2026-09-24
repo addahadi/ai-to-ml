@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 10 &mdash; Linear Regression from Scratch</title>
+<link rel="stylesheet" href="../assets/style.css">
+<meta name="description" content="Linear Regression, the cleanest instance of the whole ML machine: the reasoning, the mean-squared-error loss, the geometry of the best-fit line, a closed-form solution derived by hand, and the algorithm built from scratch in NumPy before Scikit-learn.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="AI &rarr; Machine Learning">
+<meta property="og:title" content="Lesson 10 &mdash; Linear Regression from Scratch">
+<meta property="og:description" content="Linear Regression, the cleanest instance of the whole ML machine: the reasoning, the loss, the geometry, a closed-form solution derived by hand, and built from scratch in NumPy.">
+<meta property="og:url" content="https://addahadi.github.io/ai-to-ml/modules/lesson-10.html">
+<meta name="twitter:card" content="summary">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand-mark" href="../index.html">AI<span>&#8594;</span>ML</a>
+    <nav>
+      <a href="../index.html">Roadmap</a>
+      <a href="#why">Why first</a>
+      <a href="#model">The model</a>
+      <a href="#loss">The loss</a>
+      <a href="#solving">Solving it</a>
+      <a href="#geometry">Geometry</a>
+      <a href="#scratch">From scratch</a>
+      <a href="#exercises">Exercises</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="crumb"><a href="../index.html">Roadmap</a> &nbsp;&#8250;&nbsp; Part III &middot; Supervised Learning &mdash; Regression &nbsp;&#8250;&nbsp; Module 3 &middot; Regression</div>
+
+  <section class="hero">
+    <span class="eyebrow">Lesson 10 &middot; From scratch</span>
+    <h1>Linear Regression: The Reasoning, the Math, the Geometry</h1>
+    <p class="lead">This is the first real algorithm &mdash; and we start here on purpose. Linear Regression is the <em>cleanest possible instance of the entire Machine Learning machine</em>: a model with parameters, a loss that measures how wrong it is, and a procedure that tunes the parameters to make it less wrong. Master this one and every later algorithm becomes a variation on a theme you already understand. We will define the model, choose its loss, <strong>derive the exact solution by hand</strong>, see the geometry two different ways, and build the whole thing from scratch in NumPy before letting Scikit-learn do it in three lines.</p>
+    <div class="meta-row">
+      <span><b>Reading:</b> ~40 min</span>
+      <span><b>Prerequisites:</b> Lessons 5&ndash;9 &middot; the &lt;T, P, E&gt; triple, MSE, gradient intuition, dot products</span>
+      <span><b>Code:</b> from scratch in NumPy, then the Scikit-learn equivalent</span>
+    </div>
+  </section>
+
+  <div class="callout why">
+    <div class="callout-label">Why Linear Regression is the right first algorithm</div>
+    <p>Every concept from Module 1 shows up here at once, in its simplest form. The <strong>model</strong> is a straight line. The <strong>parameters</strong> are its slope and intercept &mdash; two numbers. The <strong>loss</strong> is the mean squared error you met in Lesson 6. And there is a rare bonus: this loss can be minimized <em>exactly</em>, with a formula, so you can check the answer the optimizer of Lesson 7 is groping toward. Nothing else in the course lets you see the whole apparatus &mdash; model, loss, optimization, geometry &mdash; laid flat and fully solvable. That is why we spend a careful lesson on a model you could almost guess.</p>
+  </div>
+
+  <h2 id="goals">What this lesson delivers</h2>
+  <ul class="checklist">
+    <li>A precise statement of the regression problem, in Mitchell's &lt;T, P, E&gt; terms.</li>
+    <li>The linear model <span class="var">&#375; = wx + b</span>, its parameters, and its vectorized multi-feature form.</li>
+    <li>Why we measure error with <em>mean squared error</em> specifically &mdash; and what that choice costs us.</li>
+    <li>A hand-derivation of the <strong>closed-form solution</strong> for the best line &mdash; no optimizer required.</li>
+    <li>Two geometries: the best-fit line in data space, and least-squares as a <em>projection</em>.</li>
+    <li>A from-scratch NumPy implementation, verified against Scikit-learn.</li>
+  </ul>
+
+  <!-- =================================================================== -->
+  <h2 id="why">1 &middot; The problem: predicting a number</h2>
+
+  <p>Regression is supervised learning where <strong>the answer is a continuous number</strong>: a price, a temperature, a duration, a dosage. Contrast it with classification (Part IV), where the answer is a category. If the quantity you want lives on a number line and "a bit more" or "a bit less" is meaningful, you have a regression problem.</p>
+
+  <p>Let's make it concrete with the example we'll carry through the whole lesson. You have data on houses &mdash; each one's size in square metres and the price it sold for &mdash; and you want to predict the price of a house you haven't seen. In Mitchell's template:</p>
+
+  <div class="callout def">
+    <div class="callout-label">The regression task as &lt;T, P, E&gt;</div>
+    <p><span class="var">T</span> (task) = predict a house's price from its size. <span class="var">E</span> (experience) = a dataset of past houses with both size <em>and</em> known price &mdash; the labels that make this <em>supervised</em>. <span class="var">P</span> (performance) = how close our predictions land to the true prices, made precise in a moment as the mean squared error. Filling in this triple is the first thing to do with <em>any</em> new problem; if you cannot name <span class="var">E</span> as concrete labelled data, you do not yet have a supervised learning problem.</p>
+  </div>
+
+  <p>Notation we'll use throughout, borrowed straight from Lesson 9. Each house is a training example <span class="var">(x<sup>(i)</sup>, y<sup>(i)</sup>)</span>: <span class="var">x<sup>(i)</sup></span> is its <strong>feature</strong> (size), <span class="var">y<sup>(i)</sup></span> is its <strong>target</strong> (the true price), and <span class="var">i</span> runs from 1 to <span class="var">n</span>, the number of examples. Our prediction for example <span class="var">i</span> is written <span class="var">&#375;<sup>(i)</sup></span> ("y-hat") &mdash; the hat always means "the model's guess", never the truth.</p>
+
+  <!-- =================================================================== -->
+  <h2 id="model">2 &middot; The model: a straight line, and what its knobs mean</h2>
+
+  <p>A model is a family of functions, and "choosing a model" means choosing which family before you've seen which member fits. Linear Regression makes the simplest non-trivial choice: <strong>assume the target is a straight-line function of the feature.</strong></p>
+
+  <div class="eq"><span class="var">&#375;</span> = <span class="var">w</span> &middot; <span class="var">x</span> + <span class="var">b</span></div>
+
+  <p>Two numbers define the whole model &mdash; they are the <strong>parameters</strong>, the things learning will tune:</p>
+
+  <div class="frame">
+    <div class="frame-row"><div class="n">w</div><div class="c"><b>the weight (slope)</b><span> &mdash; how much the prediction rises for each extra unit of the feature. In our example, extra thousands of dollars per additional square metre. Its <em>sign</em> is the direction of the relationship, its <em>size</em> the strength.</span></div></div>
+    <div class="frame-row"><div class="n">b</div><div class="c"><b>the bias (intercept)</b><span> &mdash; the prediction when the feature is zero; where the line crosses the vertical axis. It shifts the whole line up or down so it doesn't have to pass through the origin.</span></div></div>
+  </div>
+
+  <div class="callout intuition">
+    <div class="callout-label">The mental model that survives all course</div>
+    <p>Every parametric model in this course has the same shape: <em>a fixed functional form with a few free numbers inside it</em>. "Training" means searching over those numbers for the ones that fit the data best. Here the form is a line and the free numbers are <span class="var">(w, b)</span>. In Logistic Regression the same <span class="var">wx + b</span> gets wrapped in a sigmoid; in a neural network it's stacked and repeated. <strong>You are not learning "a line" &mdash; you are learning the template <em>form + parameters + fit</em> for the first time, on the friendliest possible form.</strong></p>
+  </div>
+
+  <h3>More than one feature: the vectorized form</h3>
+  <p>Houses have more than a size &mdash; bedrooms, age, distance to centre. With <span class="var">d</span> features, each example is a feature <em>vector</em> <span class="var">x = (x<sub>1</sub>, &hellip;, x<sub>d</sub>)</span> and each feature gets its own weight. The model becomes a weighted vote of the features plus a bias &mdash; exactly the dot product from Lesson 9:</p>
+
+  <div class="eq"><span class="var">&#375;</span> = <span class="var">w<sub>1</sub>x<sub>1</sub></span> + <span class="var">w<sub>2</sub>x<sub>2</sub></span> + &hellip; + <span class="var">w<sub>d</sub>x<sub>d</sub></span> + <span class="var">b</span> &nbsp;=&nbsp; <span class="var">w &middot; x</span> + <span class="var">b</span></div>
+
+  <p>This is why we spent a lesson on the dot product: it collapses "multiply each feature by its weight and add them up" into a single operation, and stacked over every row of the dataset it becomes the matrix&ndash;vector product <span class="var">X w</span> that predicts for all <span class="var">n</span> houses in one line. We'll develop the single-feature case in full because you can <em>see</em> it, then write the code so it already handles the vector case.</p>
+
+  <!-- =================================================================== -->
+  <h2 id="loss">3 &middot; The loss: making "best fit" a number we can minimize</h2>
+
+  <p>There are infinitely many lines. "Best fit" is meaningless until we pick a rule that scores every line with a single number, so that lower is better and there's something concrete to minimize. That rule is the <strong>loss function</strong> of Lesson 6, and for regression the standard choice is <strong>Mean Squared Error</strong>.</p>
+
+  <p>For one example, the error is the <strong>residual</strong> &mdash; the gap between prediction and truth, <span class="var">&#375;<sup>(i)</sup> &minus; y<sup>(i)</sup></span>. We square it (so overshooting and undershooting both count as positive error, and big misses hurt disproportionately), then average over all <span class="var">n</span> examples:</p>
+
+  <div class="eq"><span class="var">J(w, b)</span> = <span class="var">(1/n)</span> &sum;<sub><span class="var">i</span>=1</sub><sup><span class="var">n</span></sup> ( <span class="var">w&middot;x<sup>(i)</sup> + b</span> &minus; <span class="var">y<sup>(i)</sup></span> )<sup>2</sup></div>
+
+  <p>Read this the way it's built. Inside: the residual for one house. Squared: the penalty for that house. Summed and divided by <span class="var">n</span>: the average penalty across the dataset. <span class="var">J</span> is written as a function of <span class="var">(w, b)</span> because <em>that is what we get to change</em> &mdash; the data is fixed; the parameters are the variables. Training is now a precise sentence: <strong>find the <span class="var">(w, b)</span> that make <span class="var">J</span> as small as possible.</strong></p>
+
+  <div class="callout math">
+    <div class="callout-label">Why squared error, and not something else</div>
+    <p>Three reasons, in order of importance for us:</p>
+    <ul>
+      <li><strong>It's smooth and has a single minimum.</strong> As a function of <span class="var">(w, b)</span>, squared error is a convex bowl &mdash; one lowest point, no local traps. That's what lets both the exact formula below and gradient descent work reliably. Absolute error <span class="var">|&#375; &minus; y|</span> has a kink at zero and no clean closed form.</li>
+      <li><strong>It's differentiable.</strong> Squaring gives a clean derivative (the exponent drops down as a factor), which is exactly the slope gradient descent needs. You already saw this in Lesson 8's <code>-2 * np.mean(...)</code> lines &mdash; that <span class="var">2</span> is the square's derivative.</li>
+      <li><strong>It penalizes large errors hard.</strong> A residual of 10 costs 100; a residual of 1 costs 1. Squaring says "one wildly wrong prediction is worse than several slightly wrong ones" &mdash; often what we want, but see the limitation below.</li>
+    </ul>
+  </div>
+
+  <div class="callout limit">
+    <div class="callout-label">The price of squaring: sensitivity to outliers</div>
+    <p>Because a residual of 20 contributes 400 to the loss, a single freak data point &mdash; a mansion mispriced in the records, a data-entry typo &mdash; can drag the whole line toward itself to avoid that one enormous squared penalty. Squared error is <em>not robust</em> to outliers. This is a genuine weakness, not a detail: real pipelines inspect and clean the data first, and where outliers are expected, practitioners switch to more robust losses (mean absolute error, Huber loss). Keep this in your pocket &mdash; "MSE chases outliers" explains a lot of surprising fits.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="solving">4 &middot; Solving it exactly: the line, by hand</h2>
+
+  <p>Here is what makes Linear Regression special enough to teach first: we don't have to <em>search</em> for the minimum &mdash; we can write it down. The loss <span class="var">J(w, b)</span> is a smooth bowl, so its lowest point is where the ground is flat in every direction: where both partial derivatives are zero. This is the calculus fact from Lesson 9 &mdash; <em>at a minimum, the slope is zero</em> &mdash; applied in two variables at once.</p>
+
+  <p>Set the derivative with respect to the bias to zero first. Differentiating <span class="var">J</span> with respect to <span class="var">b</span> (chain rule: the square's exponent drops to a factor of 2, the inside's derivative w.r.t. <span class="var">b</span> is 1):</p>
+
+  <div class="eq">&part;<span class="var">J</span>/&part;<span class="var">b</span> = <span class="var">(2/n)</span> &sum; ( <span class="var">w x<sup>(i)</sup> + b &minus; y<sup>(i)</sup></span> ) = 0</div>
+
+  <p>Divide out the <span class="var">2/n</span> and split the sum: it says the <em>average residual is zero</em>, which rearranges to <span class="var">b = &#563; &minus; w&#7809;</span>, where <span class="var">&#7809;</span> and <span class="var">&#563;</span> are the mean feature and mean target. In words: <strong>the best line always passes through the centre of mass of the data</strong> <span class="var">(&#7809;, &#563;)</span>. That single fact is worth remembering on its own.</p>
+
+  <p>Now the derivative with respect to the slope (inside's derivative w.r.t. <span class="var">w</span> is <span class="var">x<sup>(i)</sup></span>):</p>
+
+  <div class="eq">&part;<span class="var">J</span>/&part;<span class="var">w</span> = <span class="var">(2/n)</span> &sum; <span class="var">x<sup>(i)</sup></span> ( <span class="var">w x<sup>(i)</sup> + b &minus; y<sup>(i)</sup></span> ) = 0</div>
+
+  <p>Substitute <span class="var">b = &#563; &minus; w&#7809;</span> into that and solve for <span class="var">w</span>. The algebra (worth doing once by hand as an exercise) collapses to a strikingly interpretable ratio:</p>
+
+  <div class="eq"><span class="var">w</span> = <span class="var">&sum;(x<sup>(i)</sup> &minus; &#7809;)(y<sup>(i)</sup> &minus; &#563;)</span> &nbsp;/&nbsp; <span class="var">&sum;(x<sup>(i)</sup> &minus; &#7809;)<sup>2</sup></span></div>
+
+  <div class="callout intuition">
+    <div class="callout-label">What that formula is actually saying</div>
+    <p>The numerator is <strong>how feature and target vary together</strong> (the covariance): when a house is bigger than average, is its price also above average? The denominator is <strong>how much the feature varies on its own</strong> (the variance). So the slope is <em>co-variation divided by variation</em> &mdash; "when <span class="var">x</span> moves, how much does <span class="var">y</span> move with it, per unit of <span class="var">x</span>'s own spread." If size and price rise together, <span class="var">w</span> is positive; if they're unrelated, the numerator averages to zero and <span class="var">w</span> is zero &mdash; a flat line predicting the mean price for everyone, which is the best you can do when the feature tells you nothing.</p>
+  </div>
+
+  <h3>The general case: the normal equation</h3>
+  <p>With many features you can't isolate one weight at a time, but the same idea &mdash; set all the partial derivatives to zero simultaneously &mdash; produces one compact matrix equation. Fold the bias in by adding a column of 1s to the data matrix <span class="var">X</span> (so <span class="var">b</span> becomes just another weight), and the minimizer is:</p>
+
+  <div class="eq"><span class="var">&theta;</span> = ( <span class="var">X<sup>T</sup>X</span> )<sup>&minus;1</sup> <span class="var">X<sup>T</sup>y</span></div>
+
+  <p>This is the <strong>normal equation</strong>. It gives the exact best weights in one shot, no iteration &mdash; we'll use it in the code. But notice the matrix inverse: computing it costs on the order of <span class="var">d<sup>3</sup></span> for <span class="var">d</span> features, which becomes ruinous when <span class="var">d</span> is large (thousands of features), and <span class="var">X<sup>T</sup>X</span> can be numerically fragile. <strong>That cost is the entire motivation for the next lesson.</strong> When you can't afford to solve exactly, you descend iteratively instead &mdash; gradient descent &mdash; which is why Lesson 11 exists.</p>
+
+  <div class="callout connect">
+    <div class="callout-label">Two roads to the same minimum</div>
+    <p>You now have the exact answer (the normal equation) for a loss that also happens to be the textbook case for the <em>approximate</em> method (gradient descent). That's a gift: in Lesson 11 you'll implement gradient descent on this very same model and loss, and you'll be able to check that it converges to the numbers the formula gives here. Few settings let you grade an optimizer against ground truth. Linear Regression is the calibration rig for everything iterative that follows.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="geometry">5 &middot; The geometry &mdash; two ways to see it</h2>
+
+  <h3>Geometry one: the best-fit line (data space)</h3>
+  <p>The picture everyone knows. Plot each example as a point &mdash; feature on the horizontal axis, target on the vertical. The model is a line through that cloud. For any point, the <strong>residual is the vertical gap</strong> from the point up or down to the line. Squaring a residual is, literally, the area of a square built on that gap; minimizing MSE means <strong>choosing the line that makes the total area of those squares as small as possible</strong>. Hence the classic name, <em>least squares</em>.</p>
+
+  <pre><code>price
+  |                                    &bull;   &larr; residual = vertical gap
+  |                              ______/|        from point to line
+  |                        _____/    &bull; |
+  |                  _____/  |
+  |            _____/     &bull; | &larr; another residual
+  |      &bull;____/  &bull;
+  |  &bull;__/    the fitted line  y_hat = w&middot;x + b
+  |_/________________________________________ size
+       least squares picks the line that minimizes
+       the total squared vertical distance to the points</code></pre>
+
+  <p>Two things this picture makes obvious. First, the residuals are measured <em>vertically</em>, not perpendicular to the line &mdash; because we're predicting <span class="var">y</span> from <span class="var">x</span>, and error means error <em>in the thing we predict</em>. Second, the line pivots around the data's centre of mass <span class="var">(&#7809;, &#563;)</span>, exactly as the <span class="var">b = &#563; &minus; w&#7809;</span> result promised.</p>
+
+  <div class="callout intuition">
+    <div class="callout-label">Geometry two: least squares as a projection (the deeper view)</div>
+    <p>There's a second geometry that feels unrelated but is the same math from another angle &mdash; it's the one that makes linear algebra people smile. Stack all <span class="var">n</span> targets into one vector <span class="var">y</span> living in <span class="var">n</span>-dimensional space. Every possible prediction vector <span class="var">X&theta;</span> you could produce, as you vary the weights, sweeps out a flat subspace (the column space of <span class="var">X</span>). Your target <span class="var">y</span> almost certainly doesn't lie in that subspace &mdash; no line hits every point &mdash; so the best you can do is the point <em>in</em> the subspace closest to <span class="var">y</span>. That closest point is the <strong>orthogonal projection</strong> of <span class="var">y</span> onto the subspace, and "closest" in the straight-line-distance sense is exactly least squares. The residual vector then sticks out <em>perpendicular</em> to the subspace &mdash; and setting that perpendicularity condition gives you the normal equation directly. Same answer, two pictures: minimizing vertical gaps in data space <em>is</em> projecting <span class="var">y</span> onto a subspace in example space.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="scratch">6 &middot; From scratch in NumPy</h2>
+
+  <p>Now we earn the title. Everything above &mdash; model, loss, closed-form solution &mdash; is a handful of NumPy lines. We'll use the toy house dataset, fit it two ways (the single-feature formula and the general normal equation), and confirm they agree.</p>
+
+  <p>Start with the model and the loss, each a direct transcription of its equation:</p>
+
+  <pre><code><span class="tok-k">import</span> numpy <span class="tok-k">as</span> np
+
+<span class="tok-c"># Toy dataset: 6 houses. Feature = size (m2), target = price (thousands $).</span>
+x = np.array([ <span class="tok-n">50</span>,  <span class="tok-n">60</span>,  <span class="tok-n">80</span>,  <span class="tok-n">95</span>, <span class="tok-n">120</span>, <span class="tok-n">150</span>], dtype=<span class="tok-s">float</span>)   <span class="tok-c"># x^(i)</span>
+y = np.array([<span class="tok-n">150</span>, <span class="tok-n">175</span>, <span class="tok-n">210</span>, <span class="tok-n">260</span>, <span class="tok-n">300</span>, <span class="tok-n">360</span>], dtype=<span class="tok-s">float</span>)   <span class="tok-c"># y^(i)</span>
+
+<span class="tok-c"># The model:  y_hat = w * x + b   (a straight line)</span>
+<span class="tok-k">def</span> predict(x, w, b):
+    <span class="tok-k">return</span> w * x + b                <span class="tok-c"># works element-wise on the whole array</span>
+
+<span class="tok-c"># The loss:  mean squared error, exactly J(w, b) from section 3</span>
+<span class="tok-k">def</span> mse(y_hat, y):
+    <span class="tok-k">return</span> np.mean((y_hat - y) ** <span class="tok-n">2</span>)</code></pre>
+
+  <p>Next, the single-feature closed-form solution &mdash; the covariance-over-variance ratio, then the intercept through the centre of mass:</p>
+
+  <pre><code><span class="tok-c"># --- Fit by the closed-form solution (simple linear regression) ---</span>
+x_bar, y_bar = x.mean(), y.mean()
+
+w = np.sum((x - x_bar) * (y - y_bar)) / np.sum((x - x_bar) ** <span class="tok-n">2</span>)   <span class="tok-c"># cov / var</span>
+b = y_bar - w * x_bar                                          <span class="tok-c"># centre of mass</span>
+
+<span class="tok-k">print</span>(w, b)                       <span class="tok-c"># ~ 2.104  47.87   (k$ per m2, and k$ intercept)</span>
+<span class="tok-k">print</span>(mse(predict(x, w, b), y))   <span class="tok-c"># ~ 35.1   (training MSE at the optimum; RMSE ~ 5.9 k$)</span></code></pre>
+
+  <p>The slope says each extra square metre is worth about <strong>$2,100</strong>, and the model's predictions land, on average, within roughly <strong>$5,900</strong> of the truth (the root of the MSE, back in the target's own units). Now the same fit via the general normal equation, which will already handle many features when you swap in a wider <span class="var">X</span>:</p>
+
+  <pre><code><span class="tok-c"># --- The general form: fold the bias into the weights ---</span>
+<span class="tok-c"># Design matrix: a column of 1s (multiplying b) beside the feature column(s).</span>
+X = np.column_stack([np.ones_like(x), x])     <span class="tok-c"># shape (6, 2): [1, size] per row</span>
+
+<span class="tok-c"># Normal equation:  theta = (X^T X)^-1 X^T y  -- but SOLVE, never invert.</span>
+theta = np.linalg.solve(X.T @ X, X.T @ y)     <span class="tok-c"># @ is matrix multiply</span>
+b, w = theta                                  <span class="tok-c"># -> 47.87, 2.104  (same as above)</span></code></pre>
+
+  <div class="callout practice">
+    <div class="callout-label">One habit worth forming now: solve, don't invert</div>
+    <p>The math says <span class="var">(X<sup>T</sup>X)<sup>&minus;1</sup>X<sup>T</sup>y</span>, but you should almost never call <code>np.linalg.inv</code>. Forming the inverse explicitly is slower and numerically shakier than asking the library to <em>solve the linear system</em> <span class="var">(X<sup>T</sup>X)&theta; = X<sup>T</sup>y</span> directly with <code>np.linalg.solve</code>. Same answer, better conditioned. This is a small thing that separates code that merely runs from code a numerical practitioner trusts.</p>
+  </div>
+
+  <p>Finally, use the fitted model to predict &mdash; the whole point. A 100&nbsp;m&sup2; house:</p>
+
+  <pre><code>predict(np.array([<span class="tok-n">100.0</span>]), w, b)    <span class="tok-c"># array([258.28])  -> about $258k</span></code></pre>
+
+  <h3>The Scikit-learn equivalent</h3>
+  <p>Everything above is what a library does for you. Now that you've built it, here's the three-line version &mdash; and it's no longer a black box, because you know precisely what <code>coef_</code> and <code>intercept_</code> are and how they were found.</p>
+
+  <pre><code><span class="tok-k">from</span> sklearn.linear_model <span class="tok-k">import</span> LinearRegression
+
+model = LinearRegression()                <span class="tok-c"># fits an intercept by default</span>
+model.fit(x.reshape(-<span class="tok-n">1</span>, <span class="tok-n">1</span>), y)          <span class="tok-c"># sklearn wants X as 2-D: (n_samples, n_features)</span>
+
+model.coef_          <span class="tok-c"># array([2.104...])  <- our w</span>
+model.intercept_     <span class="tok-c"># 47.87...           <- our b</span>
+model.predict([[<span class="tok-n">100</span>]])   <span class="tok-c"># array([258.28...]) <- identical to our from-scratch answer</span></code></pre>
+
+  <div class="callout intuition">
+    <div class="callout-label">Why we built it first anyway</div>
+    <p>Scikit-learn's <code>LinearRegression</code> <em>is</em> the normal equation (via a stable least-squares solver) with the bias handled for you &mdash; nothing more mysterious than what you just wrote. Building it from scratch buys you something the three lines can't: when a fit misbehaves later &mdash; wild coefficients, a line that ignores the data &mdash; you'll reason about it in terms of covariance, variance, conditioning, and outliers, not shrug at an API. This is the course's whole bet: <em>the library is easy once the machine underneath it is not a mystery.</em></p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="assumptions">7 &middot; What we quietly assumed (and when it breaks)</h2>
+  <div class="callout limit">
+    <div class="callout-label">The fine print behind a clean line</div>
+    <ul>
+      <li><strong>Linearity.</strong> We assumed the target really is roughly a straight-line function of the features. If the true relationship curves, a line will systematically under- and over-shoot no matter how well we fit it &mdash; that's <em>underfitting</em>, and Lesson 12's polynomial features are one cure.</li>
+      <li><strong>Outliers dominate.</strong> As warned above, squared error lets one extreme point pull the line. Always look at your data before trusting a fit.</li>
+      <li><strong>Feature scale matters for the iterative version.</strong> The closed form is scale-immune, but gradient descent (next lesson) is not &mdash; features on wildly different scales make it crawl. That's a preview of why feature scaling gets its own treatment in Lesson 12.</li>
+      <li><strong>Correlation is not causation.</strong> A positive weight on size says "bigger houses tend to cost more in this data," not "adding a square metre <em>causes</em> $2,100." The model captures association; causal claims need far more than a good fit.</li>
+    </ul>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="connection">How this connects to the next lesson</h2>
+  <div class="callout connect">
+    <div class="callout-label">Bridge to Lesson 11</div>
+    <p>You have the model, the loss, its exact minimizer, and its geometry &mdash; and you've met the reason the exact route doesn't scale: inverting <span class="var">X<sup>T</sup>X</span> is too expensive when features are many. <strong>Lesson 11 &mdash; Gradient Descent in Depth</strong> takes the alternative road. Instead of jumping to the bottom of the loss bowl with a formula, you'll roll down it step by step: compute the gradient of this exact <span class="var">J(w, b)</span>, take a step opposite to it, repeat. You'll implement it in NumPy on this same house dataset and watch it converge to <span class="var">w &asymp; 2.10, b &asymp; 47.9</span> &mdash; the numbers you already trust from the closed form. That's the payoff of doing the solvable case first: you get to <em>grade</em> the optimizer you're about to rely on for every model that has no formula.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <h2 id="exercises">Exercises &amp; reflection</h2>
+  <p>The first two are with pencil; the rest are at the keyboard. If you can do them, Linear Regression is genuinely yours.</p>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 1 &middot; Finish the derivation</div>
+    <p>Starting from the two zero-derivative equations in section 4, substitute <span class="var">b = &#563; &minus; w&#7809;</span> into the slope equation and grind the algebra until you reach <span class="var">w = &sum;(x<sup>(i)</sup>&minus;&#7809;)(y<sup>(i)</sup>&minus;&#563;) / &sum;(x<sup>(i)</sup>&minus;&#7809;)<sup>2</sup></span>. Do it once; you'll never fear a normal equation again.</p>
+    <details><summary>Show the key step</summary>
+      <div class="details-body">
+        <p>Expand the slope equation <span class="var">&sum; x<sup>(i)</sup>(w x<sup>(i)</sup> + b &minus; y<sup>(i)</sup>) = 0</span> and replace <span class="var">b</span> with <span class="var">&#563; &minus; w&#7809;</span>. Collecting the <span class="var">w</span> terms gives <span class="var">w &sum; x<sup>(i)</sup>(x<sup>(i)</sup> &minus; &#7809;) = &sum; x<sup>(i)</sup>(y<sup>(i)</sup> &minus; &#563;)</span>. The trick is that <span class="var">&sum;(x<sup>(i)</sup> &minus; &#7809;) = 0</span>, which lets you replace <span class="var">&sum; x<sup>(i)</sup>(x<sup>(i)</sup> &minus; &#7809;)</span> with <span class="var">&sum;(x<sup>(i)</sup> &minus; &#7809;)<sup>2</sup></span> (and similarly on the right), delivering the covariance-over-variance ratio.</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 2 &middot; The line through the mean</div>
+    <p>Without touching code, what price does the fitted model predict for a house of exactly average size (<span class="var">&#7809;</span> = 92.5&nbsp;m&sup2;)? Answer from the geometry alone, then verify with the numbers.</p>
+    <details><summary>Show solution</summary>
+      <div class="details-body">
+        <p>The mean price, <span class="var">&#563;</span> = 242.5&nbsp;k$. The best line always passes through the centre of mass <span class="var">(&#7809;, &#563;)</span> &mdash; that's precisely what <span class="var">b = &#563; &minus; w&#7809;</span> encodes &mdash; so at <span class="var">x = &#7809;</span> the prediction is <span class="var">&#563;</span> exactly. Check: <span class="var">2.104 &times; 92.5 + 47.87 = 242.5</span>. You never needed the slope.</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 3 &middot; Reproduce and inspect</div>
+    <p>Type the from-scratch code into a notebook and confirm you get <span class="var">w &asymp; 2.104, b &asymp; 47.87, MSE &asymp; 35.1</span>. Then print the six residuals (<code>predict(x, w, b) - y</code>). Verify that they sum to (almost) zero &mdash; and explain, from section 4, why they must.</p>
+    <details><summary>Show discussion</summary>
+      <div class="details-body">
+        <p>The residuals should sum to essentially zero (up to floating-point dust). That's not luck: the zero-derivative condition for <span class="var">b</span> <em>was</em> the statement "the average residual is zero." A nonzero sum would mean you could lower the loss by shifting <span class="var">b</span> &mdash; so at the optimum it can't happen.</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 4 &middot; Break it with an outlier</div>
+    <p>Change the last price from 360 to 900 (a data-entry error &mdash; someone typed an extra digit) and refit. How much do <span class="var">w</span> and <span class="var">b</span> move? Relate what you see to the "MSE chases outliers" warning.</p>
+    <details><summary>Show discussion</summary>
+      <div class="details-body">
+        <p>Both the slope and the fit degrade sharply &mdash; the line tilts up to chase the single inflated point, worsening its predictions for all five honest houses, because one residual of ~500 squared (250,000) dwarfs everything else in the loss. This is the outlier-sensitivity of squared error made visceral, and the reason "look at the data first" is not a platitude.</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="x-h">Exercise 5 &middot; Add a second feature</div>
+    <p>Give each house a second feature &mdash; say bedrooms <code>[1, 2, 2, 3, 3, 4]</code> &mdash; and fit with the normal-equation code by stacking a second column into <span class="var">X</span> (<code>np.column_stack([np.ones_like(x), x, bedrooms])</code>). Read off the three coefficients. Which feature does the model lean on more, and why can't you compare the raw weights directly?</p>
+    <details><summary>Show discussion</summary>
+      <div class="details-body">
+        <p>You'll get an intercept plus one weight per feature. You <em>cannot</em> compare the raw weights to judge importance, because they're in different units (dollars per m&sup2; vs dollars per bedroom) and the features have different scales &mdash; a weight is "price change per one unit of <em>that</em> feature." Making weights comparable requires putting features on a common scale first, which is exactly the feature-scaling topic of Lesson 12.</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="callout intuition">
+    <div class="callout-label">One-paragraph summary to lock it in</div>
+    <p>Linear Regression is the entire Machine Learning machine at its simplest and, uniquely, fully solvable. The <strong>model</strong> is a line <span class="var">&#375; = wx + b</span> &mdash; or, with many features, the dot product <span class="var">w&middot;x + b</span> &mdash; whose two knobs are a slope and an intercept. The <strong>loss</strong> is mean squared error, chosen because it is smooth, differentiable, and single-minimum'd, at the known cost of chasing outliers. Because that loss is a convex bowl, its minimum is where both partial derivatives vanish, and solving those gives an exact answer: the slope is <em>covariance over variance</em>, the intercept forces the line through the data's centre of mass, and in general the <strong>normal equation</strong> <span class="var">&theta; = (X<sup>T</sup>X)<sup>&minus;1</sup>X<sup>T</sup>y</span> delivers all the weights at once. Two geometries agree on it &mdash; the least-squares best-fit line in data space, and the orthogonal projection of <span class="var">y</span> onto the column space of <span class="var">X</span>. In NumPy the whole thing is a dozen lines that match Scikit-learn to the digit. And the one flaw in the exact route &mdash; that inverting <span class="var">X<sup>T</sup>X</span> is too costly at scale &mdash; is the doorway to Lesson 11, where we reach the same minimum by descending toward it instead of solving for it.</p>
+  </div>
+
+  <nav class="lessonnav">
+    <a class="prev" href="lesson-09.html">
+      <span class="dir">&larr; Previous</span>
+      <span class="ttl">Lesson 9 &middot; The Math You Actually Need</span>
+    </a>
+    <a class="next disabled" href="#" aria-disabled="true">
+      <span class="dir">Next &rarr;</span>
+      <span class="ttl">Lesson 11 &middot; Gradient Descent in Depth</span>
+    </a>
+  </nav>
+
+</main>
+
+<footer class="foot">
+  Lesson 10 of 29 &middot; AI &rarr; Machine Learning &middot; Understand the <em>why</em> before the <em>how</em>.
+  <span class="byline">&copy; 2026 <a href="https://www.linkedin.com/in/adda-missoum-a534a7319/">Missoum Hadi Adda</a> &middot; Licensed <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>, code <a href="https://opensource.org/license/mit">MIT</a> &middot; <a href="https://github.com/addahadi/ai-to-ml">Source</a> &middot; Built with <a href="https://claude.com/claude-code">Claude Code</a></span>
+  <img src="https://addahadi.goatcounter.com/count?p=/modules/lesson-10.html" alt="" width="1" height="1">
+</footer>
+
+</body>
+</html>
